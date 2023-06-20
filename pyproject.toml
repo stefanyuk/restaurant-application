@@ -1,0 +1,58 @@
+[tool.poetry]
+name = "lacrema_app"
+version = "0.1.0"
+description = "REST API service, designed to enhance the functionality of the main café application. Its primary purpose is to facilitate seamless CRUD operations for essential entities within the application, ensuring efficient management of data"
+authors = ["sstefanyuk <stefanyuk.andriyigor@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.96.0"
+uvicorn = {extras = ["standard"], version = "^0.22.0"}
+alembic = "^1.11.1"
+SQLAlchemy = "^2.0.15"
+pydantic = {extras = ["email"], version = "^1.10.8"}
+fastapi-pagination = "^0.12.4"
+phonenumbers = "^8.13.13"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-jose = "^3.3.0"
+python-dotenv = "^1.0.0"
+psycopg2-binary = "^2.9.6"
+fastapi-mail = "^1.2.8"
+
+[tool.poetry.dev-dependencies]
+mypy = "^1.3.0"
+ruff = "^0.0.272"
+black = "^23.3.0"
+pytest = "^7.3.2"
+httpx = "^0.24.1"
+SQLAlchemy-Utils = "^0.41.1"
+factory-boy = "^3.2.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.ruff]
+exclude = [
+    ".vscode",
+    "alembic/",
+    "alembic.ini",
+    ".env"
+]
+line-length = 88
+
+[tool.mypy]
+ignore_missing_imports = "True"
+exclude = ["alembic.ini", ".env", "alembic"]
+
+
+[tool.ruff.per-file-ignores]
+"src/database/models/address.py" = ["F821"]
+"src/database/models/category.py" = ["F821"]
+"src/database/models/employee_profiel.py" = ["F821"]
+"src/database/models/order_item.py" = ["F821"]
+"src/database/models/order.py" = ["F821"]
+"src/database/models/product.py" = ["F821"]
+"src/database/models/user.py" = ["F821"]
+"data/populate_db_with_test_data.py" = ["E402"]
