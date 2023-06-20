@@ -4,20 +4,16 @@ from fastapi import APIRouter, Depends, status
 from fastapi_pagination.limit_offset import LimitOffsetPage
 from sqlalchemy.orm import Session
 
-from src.apis.auth_dependencies import authenticated_admin_user
 from src.apis.common_errors import ErrorResponse, build_http_exception_response
-from src.apis.products.schemas import ProductCreate, ProductOut
+from src.apis.admin.products.schemas import ProductCreate, ProductOut
 from src.apis.services.category_service import CategoryDoesNotExist, CategoryService
 from src.apis.services.picture_saver import ServerPictureSaver
 from src.apis.services.product_service import ProductAlreadyExists, ProductService
 from src.database.db import get_db_session
 from src.settings import settings
 
-ROUTER = APIRouter(
-    prefix="/products",
-    tags=["products"],
-    dependencies=[Depends(authenticated_admin_user)],
-)
+
+ROUTER = APIRouter(prefix="/products")
 
 
 @ROUTER.post(

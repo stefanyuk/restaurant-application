@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from src.apis.common_errors import ServiceBaseError
-from src.apis.products.schemas import ProductCreate
+from src.apis.admin.products.schemas import ProductCreate
 from src.apis.services.base import BaseService
 from src.apis.services.picture_saver import PictureSaver
 from src.database.models import Product

@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt
 from sqlalchemy.orm import Session
 
-from src.apis.users.schemas import UserExtendedCreate
+from src.apis.admin.users.schemas import UserExtendedCreate
 from src.apis.services.user_service import UserService
 from src.apis.token_backend import APITokenBackend, JWTTokenBackend, InvalidToken
 from src.database.db import get_db_session

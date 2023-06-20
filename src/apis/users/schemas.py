@@ -1,11 +1,11 @@
 from datetime import date, datetime
 from typing import Optional
-import phonenumbers
-from phonenumbers import NumberParseException
 from pydantic import BaseModel, EmailStr, Field, validator
 
 from src.database.models.constants import MAX_FIRST_NAME_LENGTH, MAX_LAST_NAME_LENGTH
 from src.database.models.order import OrderStatus
+from src.apis.utils import check_phone_number
+
 
 MIN_PASSWORD_LENGTH = 8
 
@@ -29,42 +29,12 @@ class AddressOut(AddressBase, AddressId):
         orm_mode = True
 
 
-def check_phone_number(phone_number: str | None) -> str | None:
-    """Validate whether provided phone number is correct.
-
-    Args:
-        phone_number (str | None): provided phone number value or None
-
-    Raises:
-        ValueError: in case when provided phone number is incorrect
-
-    Returns:
-        str: phone number
-    """
-    if phone_number is None:
-        return phone_number
-
-    is_valid = None
-
-    try:
-        number = phonenumbers.parse(phone_number)
-        if not phonenumbers.is_valid_number(number):
-            is_valid = False
-    except NumberParseException:
-        is_valid = False
-
-    if is_valid is False:
-        raise ValueError("Provided phone number is incorrect.")
-
-    return phone_number
-
-
 class UserId(BaseModel):
     id: int
 
 
 class UserPassword(BaseModel):
-    password: str
+    password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
 
 
 class UserBase(BaseModel):
@@ -78,24 +48,10 @@ class UserBase(BaseModel):
         orm_mode = True
 
 
-class UserExtended(UserBase):
-    is_admin: bool
-    is_employee: bool
-
-
 class UserCreate(UserPassword, UserBase):
     _validate_phone_number = validator("phone_number", allow_reuse=True)(
         check_phone_number
     )
-
-
-class UserExtendedCreate(UserCreate):
-    is_admin: bool
-    is_employee: bool
-
-
-class UserExtendedOut(UserExtended, UserId):
-    pass
 
 
 class UserOut(UserBase, UserId):

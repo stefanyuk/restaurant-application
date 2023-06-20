@@ -4,18 +4,13 @@ from fastapi import APIRouter, Depends, status
 from fastapi_pagination.limit_offset import LimitOffsetPage
 from sqlalchemy.orm import Session
 
-from src.apis.auth_dependencies import authenticated_user
-from src.apis.categories.schemas import CategoryCreate, CategoryOut
+from src.apis.admin.categories.schemas import CategoryCreate, CategoryOut
 from src.apis.common_errors import ErrorResponse, build_http_exception_response
 from src.apis.services.category_service import CategoryAlreadyExists, CategoryService
 from src.database.db import get_db_session
 
 
-ROUTER = APIRouter(
-    prefix="/categories",
-    tags=["categories"],
-    dependencies=[Depends(authenticated_user)],
-)
+ROUTER = APIRouter(prefix="/categories")
 
 
 @ROUTER.post(

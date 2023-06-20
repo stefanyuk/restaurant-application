@@ -1,10 +1,7 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, status
-from fastapi_pagination.limit_offset import LimitOffsetPage
 from sqlalchemy.orm import Session
 from fastapi import BackgroundTasks
-from src.apis.auth_dependencies import authenticated_admin_user, authenticated_user
+from src.apis.auth_dependencies import authenticated_user
 from src.apis.common_errors import ErrorResponse, build_http_exception_response
 from src.apis.services.order_service import OrderService, ProductDoesNotExist
 from src.apis.services.user_service import (
@@ -21,77 +18,12 @@ from src.apis.users.schemas import (
     UpdateUser,
     UserCreate,
     UserOut,
-    UserExtendedCreate,
-    UserExtendedOut,
 )
 from src.database.db import get_db_session
 from src.database.models import User
 
-ADMINS_ROUTER = APIRouter(
-    prefix="/admin",
-    tags=["admin"],
-    dependencies=[Depends(authenticated_admin_user)],
-)
 USERS_ROUTER = APIRouter(prefix="/users", tags=["users"])
 ME_ROUTER = APIRouter(prefix="/me", tags=["me"])
-
-
-@ADMINS_ROUTER.post(
-    "/users",
-    responses={
-        status.HTTP_200_OK: {"model": UserExtendedOut},
-        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
-    },
-)
-def create_user_by_admin_api(
-    user_data: UserExtendedCreate, db_session: Session = Depends(get_db_session)
-) -> UserExtendedOut:
-    service = UserService(db_session)
-
-    try:
-        user = service.create_user(user_data)
-    except UserAlreadyExists as error:
-        return build_http_exception_response(
-            message=error.message,
-            code=status.HTTP_400_BAD_REQUEST,
-        )
-
-    return user
-
-
-@ADMINS_ROUTER.get("/")
-def get_users_list_api(
-    search: Optional[str] = None,
-    sort: Optional[str] = None,
-    db_session: Session = Depends(get_db_session),
-) -> LimitOffsetPage[UserExtendedOut]:
-    """Return list of all existing User entities."""
-    service = UserService(db_session)
-    return service.read_all(search, sort)
-
-
-@ADMINS_ROUTER.get(
-    "/{user_id}",
-    responses={
-        status.HTTP_200_OK: {"model": UserExtendedOut},
-        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
-    },
-)
-def get_user_api(
-    user_id: int, db_session: Session = Depends(get_db_session)
-) -> UserOut:
-    """Return information about user with the provided id."""
-    service = UserService(db_session)
-
-    try:
-        user = service.get_by_id(user_id)
-    except UserDoesNotExist as error:
-        return build_http_exception_response(
-            message=error.message,
-            code=status.HTTP_404_NOT_FOUND,
-        )
-
-    return user
 
 
 @USERS_ROUTER.post(
@@ -161,15 +93,6 @@ def update_authenticated_user_info(
         )
 
     return user
-
-
-@ADMINS_ROUTER.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user_api(
-    user_id: int,
-    db_session: Session = Depends(get_db_session),
-):
-    service = UserService(db_session)
-    service.delete(user_id)
 
 
 @ME_ROUTER.post(

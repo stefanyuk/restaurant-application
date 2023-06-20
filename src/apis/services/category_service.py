@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from src.apis.categories.schemas import CategoryCreate
+from src.apis.admin.categories.schemas import CategoryCreate
 from src.apis.common_errors import ServiceBaseError
 from src.apis.services.base import BaseService
 from src.database.models import Category
