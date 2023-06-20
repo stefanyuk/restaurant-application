@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     secret_key: str = "secret"
     access_token_lifetime: timedelta = timedelta(days=5)
     refresh_token_lifetime: timedelta = timedelta(days=1)
+    password_reset_token_lifetime: timedelta = timedelta(minutes=5)
     expiration_time_claim_name: str = "exp"
     issued_at_time_claim_name: str = "iat"
     user_id_claim_name: str = "user_id"

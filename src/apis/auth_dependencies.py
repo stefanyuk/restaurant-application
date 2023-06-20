@@ -2,12 +2,15 @@ from datetime import datetime
 
 from fastapi import Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import jwt
 from sqlalchemy.orm import Session
 
 from src.apis.admin.users.schemas import UserExtendedCreate
 from src.apis.services.user_service import UserService
-from src.apis.token_backend import APITokenBackend, JWTTokenBackend, InvalidToken
+from src.apis.token_backend import (
+    APITokenBackend,
+    InvalidToken,
+    create_jwt_token_backend,
+)
 from src.database.db import get_db_session
 from src.database.models import User
 from src.apis.common_errors import build_http_exception_response
@@ -16,7 +19,7 @@ from src.apis.common_errors import build_http_exception_response
 def authenticated_user(
     credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
     db_session: Session = Depends(get_db_session),
-    token_backend: APITokenBackend = Depends(JWTTokenBackend(jwt)),
+    token_backend: APITokenBackend = Depends(create_jwt_token_backend),
 ) -> User:
     """Protect API endpoints with JWT token authentication."""
     service = UserService(db_session)

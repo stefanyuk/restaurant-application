@@ -1,10 +1,10 @@
 import abc
 from calendar import timegm
-from datetime import datetime
-from enum import Enum
+from datetime import datetime, timedelta
 from typing import Any, Mapping, Protocol
 
 from jose.exceptions import JWTError
+from jose import jwt
 
 from src.apis.services.user_service import UserService, UserDoesNotExist
 from src.database.models import User
@@ -17,11 +17,6 @@ class InvalidToken(Exception):
     """Raised in case when API token is not valid."""
 
     pass
-
-
-class TokenTypes(Enum):
-    ACCESS = "ACCESS"
-    REFRESH = "REFRESH"
 
 
 class JWTBackendProtocol(Protocol):
@@ -41,14 +36,12 @@ class JWTBackendProtocol(Protocol):
 class APITokenBackend(abc.ABC):
     """Base backend service implementation for API token operations."""
 
-    _access_token_lifetime = settings.access_token_lifetime
-    _refresh_token_lifetime = settings.refresh_token_lifetime
     _expiration_time_claim_name = settings.expiration_time_claim_name
     _issued_at_time_claim_name = settings.issued_at_time_claim_name
     _user_id_claim_name = settings.user_id_claim_name
 
     @abc.abstractmethod
-    def create_api_token_for_user(self, user: User, token_type: TokenTypes) -> str:
+    def create_api_token_for_user(self, user: User, token_lifetime: timedelta) -> str:
         """Set create token interface for all subclasses."""
         pass
 
@@ -60,11 +53,6 @@ class APITokenBackend(abc.ABC):
     @abc.abstractmethod
     def verify(self, token: str) -> TokenPayload:
         """Set verify token interface for all subclasses."""
-        pass
-
-    @abc.abstractmethod
-    def __call__(self, *args: Any, **kwds: Any) -> "APITokenBackend":
-        """Set __call__ interface for all subclasses."""
         pass
 
 
@@ -82,12 +70,9 @@ class JWTTokenBackend(APITokenBackend):
         self.algorithm = algorithm
         self._current_time = datetime.utcnow()
 
-    def __call__(self) -> "JWTTokenBackend":
-        return self
-
-    def create_api_token_for_user(self, user: User, token_type: TokenTypes) -> str:
+    def create_api_token_for_user(self, user: User, token_lifetime: timedelta) -> str:
         """Create new API token for the given user."""
-        payload = self._create_user_token_payload(user, token_type)
+        payload = self._create_user_token_payload(user, token_lifetime)
         return self.jwt_backend.encode(payload, self.shared_secret, self.algorithm)
 
     def get_user_from_token(self, token: str, user_service: UserService) -> User:
@@ -136,12 +121,9 @@ class JWTTokenBackend(APITokenBackend):
             raise KeyError("Invalid token claims.")
 
     def _create_user_token_payload(
-        self, user: User, token_type: TokenTypes
+        self, user: User, token_lifetime: timedelta
     ) -> TokenPayload:
-        if token_type == token_type.ACCESS:
-            expiration_date = self._current_time + self._access_token_lifetime
-        else:
-            expiration_date = self._current_time + self._refresh_token_lifetime
+        expiration_date = token_lifetime + self._current_time
 
         return {
             self._user_id_claim_name: user.id,
@@ -155,3 +137,7 @@ class JWTTokenBackend(APITokenBackend):
 
     def _convert_to_timestamp(self, date: datetime):
         return timegm(date.utctimetuple())
+
+
+def create_jwt_token_backend() -> APITokenBackend:
+    return JWTTokenBackend(jwt)

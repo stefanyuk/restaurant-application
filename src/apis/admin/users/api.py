@@ -17,8 +17,9 @@ ROUTER = APIRouter(prefix="/users")
 
 @ROUTER.post(
     "/",
+    status_code=status.HTTP_201_CREATED,
     responses={
-        status.HTTP_200_OK: {"model": UserExtendedOut},
+        status.HTTP_201_CREATED: {"model": UserExtendedOut},
         status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
     },
 )

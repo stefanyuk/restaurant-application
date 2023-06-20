@@ -27,6 +27,9 @@ pytest = "^7.3.2"
 httpx = "^0.24.1"
 SQLAlchemy-Utils = "^0.41.1"
 factory-boy = "^3.2.1"
+pytest-asyncio = "^0.21.0"
+coverage = "^7.2.7"
+pytest-cov = "^4.1.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -56,3 +59,4 @@ exclude = ["alembic.ini", ".env", "alembic"]
 "src/database/models/product.py" = ["F821"]
 "src/database/models/user.py" = ["F821"]
 "data/populate_db_with_test_data.py" = ["E402"]
+"api_tests/test_users_api.py" = ["E501"]

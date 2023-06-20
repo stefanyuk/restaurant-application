@@ -1,9 +1,10 @@
 import pytest
+import os
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.apis.token_backend import JWTTokenBackend, TokenTypes
+from src.apis.token_backend import JWTTokenBackend
 from jose import jwt
 from src.database.db import get_db_session
 from src.database.models import Base, User
@@ -16,6 +17,8 @@ from api_tests.factories import (
     ProductFactory,
     CategoryFactory,
 )
+from src.settings import settings
+
 
 SQLALCHEMY_TEST_DATABASE_URL = (
     "postgresql+psycopg2://lacrema:lacrema123@localhost:5432/lacrema_test_db"
@@ -26,6 +29,14 @@ TestingSessionLocal = sessionmaker(autocommit=False, bind=engine)
 
 if not database_exists(engine.url):
     create_database(engine.url)
+
+
+def pytest_configure():
+    os.environ["SUPPRESS_SEND"] = "1"
+
+
+def pytest_unconfigure():
+    os.environ["SUPPRESS_SEND"] = "0"
 
 
 @pytest.fixture
@@ -54,10 +65,16 @@ def basic_user():
 
 
 @pytest.fixture
+def api_client(application: FastAPI):
+    with TestClient(app=application, base_url="http://test") as client:
+        yield client
+
+
+@pytest.fixture
 def basic_user_client(application: FastAPI, basic_user: User):
     with TestClient(app=application, base_url="http://test") as client:
         access_token = JWTTokenBackend(jwt).create_api_token_for_user(
-            basic_user, TokenTypes.ACCESS
+            basic_user, settings.access_token_lifetime
         )
         client.headers = {"Authorization": f"Bearer {access_token}"}
         yield client
@@ -67,7 +84,7 @@ def basic_user_client(application: FastAPI, basic_user: User):
 def admin_user_client(application: FastAPI, admin_user: User):
     with TestClient(app=application) as client:
         access_token = JWTTokenBackend(jwt).create_api_token_for_user(
-            admin_user, TokenTypes.ACCESS
+            admin_user, settings.access_token_lifetime
         )
         client.headers = {"Authorization": f"Bearer {access_token}"}
         yield client

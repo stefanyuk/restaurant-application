@@ -110,3 +110,7 @@ class OrderOut(OrderBase, OrderId):
     status: OrderStatus
     ordered_at: datetime
     delivery_address: AddressBase
+
+
+class PasswordReset(UserPassword):
+    token: str
