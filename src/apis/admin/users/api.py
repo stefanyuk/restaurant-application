@@ -12,7 +12,7 @@ from src.apis.services.user_service import (
     UserService,
 )
 
-ROUTER = APIRouter(prefix="/users", tags=["users"])
+ROUTER = APIRouter(prefix="/users")
 
 
 @ROUTER.post(
