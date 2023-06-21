@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     host: str = Field("127.0.0.1")
     port: str = Field("8080")
     db_connection_string: str
+    test_db_connection_string: str
     secret_key: str = "secret"
     access_token_lifetime: timedelta = timedelta(days=5)
     refresh_token_lifetime: timedelta = timedelta(days=1)

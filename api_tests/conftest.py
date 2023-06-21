@@ -19,10 +19,7 @@ from api_tests.factories import (
 )
 from src.settings import settings
 
-
-SQLALCHEMY_TEST_DATABASE_URL = (
-    "postgresql+psycopg2://lacrema:lacrema123@localhost:5432/lacrema_test_db"
-)
+SQLALCHEMY_TEST_DATABASE_URL = settings.test_db_connection_string
 
 engine = create_engine(SQLALCHEMY_TEST_DATABASE_URL, echo=True)
 TestingSessionLocal = sessionmaker(autocommit=False, bind=engine)
