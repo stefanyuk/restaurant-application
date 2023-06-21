@@ -1,0 +1,53 @@
+name: Python application
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      TEST_DB_CONNECTION_STRING: "postgresql+psycopg2://postgres:postgres1234@localhost:5432/restaurant_test_db"
+      DB_CONNECTION_STRING: "postgresql+psycopg2://postgres:postgres1234@database:5432/restaurant_db"
+      MAIL_USERNAME: default@gmail.com
+      MAIL_PASSWORD: default
+      MAIL_FROM: default@gmail.com
+      MAIL_SERVER: server.server.com
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_DB: restaurant_test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres1234
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install Poetry Action
+      uses: snok/install-poetry@v1.3.3
+      with:
+          virtualenvs-create: true
+    - name: Install dependencies
+      run: |
+        poetry install
+    - name: Test with pytest
+      run: |
+        poetry run pytest --cov-report xml --cov=src api_tests/
+
+    - name: Test & publish code coverage
+      uses: paambaati/codeclimate-action@v4.0.0
+      env:
+        CC_TEST_REPORTER_ID: ${{secrets.CC_TEST_REPORTER_ID}}
