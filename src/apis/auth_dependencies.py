@@ -4,7 +4,6 @@ from fastapi import Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from src.apis.admin.users.schemas import UserExtendedCreate
 from src.apis.services.user_service import UserService
 from src.apis.token_backend import (
     APITokenBackend,
@@ -46,23 +45,5 @@ def authenticated_admin_user(user: User = Depends(authenticated_user)):
         return build_http_exception_response(
             message="Access denied.", code=status.HTTP_403_FORBIDDEN
         )
-
-    return user
-
-
-def debug_auth(db_session: Session):
-    service = UserService(db_session)
-    user = service.get_by_field_value("email", "admin@example.com")
-    if user is None:
-        user_data = {
-            "password": "stringst",
-            "first_name": "admin",
-            "last_name": "admin",
-            "email": "admin@example.com",
-            "birth_date": datetime(2023, 6, 8),
-            "is_admin": True,
-            "is_employee": True,
-        }
-        return service.create_user(UserExtendedCreate.parse_obj(user_data))
 
     return user

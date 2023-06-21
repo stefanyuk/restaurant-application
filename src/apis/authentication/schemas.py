@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class AccessToken(BaseModel):
@@ -14,7 +14,3 @@ class TokensData(RefreshToken, AccessToken):
 
     refresh: str
     access: str
-
-
-class UserEmail(BaseModel):
-    email: EmailStr

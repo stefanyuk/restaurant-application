@@ -75,7 +75,7 @@ async def obtain_reset_password_email(
     if user is None:
         raise build_http_exception_response(
             f"User with email '{email}' does not exist.",
-            code=status.HTTP_400_BAD_REQUEST,
+            code=status.HTTP_404_NOT_FOUND,
         )
 
     background_tasks.add_task(send_password_reset_email, user, token_backend, fm)
@@ -150,7 +150,6 @@ def update_authenticated_user_info(
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_201_CREATED: {"model": AddressOut},
-        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
         status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
     },
 )
@@ -159,6 +158,11 @@ def create_authenticated_user_address_api(
     user: User = Depends(authenticated_user),
     db_session: Session = Depends(get_db_session),
 ) -> AddressOut:
+    """Create an address for an authenticated user.
+
+    Endpoint does not create an address, in case when
+    exact same address already exists in user's address list.
+    """
     service = UserService(db_session)
     address = service.add_address(user, address_data)
     return address
@@ -179,6 +183,7 @@ async def create_authenticated_user_order_api(
     user: User = Depends(authenticated_user),
     db_session: Session = Depends(get_db_session),
 ) -> OrderOut:
+    """Create order for an authenticated user."""
     order_service = OrderService(db_session)
     user_service = UserService(db_session)
     address = user_service.add_address(user, order_data.delivery_address)

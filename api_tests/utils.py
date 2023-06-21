@@ -151,3 +151,33 @@ def assert_extended_user_data(
 
     if check_id is True:
         assert expected_user_data["id"] == response_data["id"]
+
+
+def assert_category_data(
+    response_data: ResponseData,
+    expected_category_data: ExpectedData,
+    check_id: bool = True,
+):
+    expected_attrs = ("name",)
+
+    assert "id" in response_data, "Attribute 'id' was not found in response."
+
+    _assert_attrs(expected_attrs, response_data, expected_category_data)
+
+    if check_id is True:
+        assert expected_category_data["id"] == response_data["id"]
+
+
+def assert_product_data(
+    response_data: ResponseData,
+    expected_product_data: ExpectedData,
+    check_id: bool = True,
+):
+    expected_attrs = ("name",)
+
+    assert "id" in response_data, "Attribute 'id' was not found in response."
+
+    _assert_attrs(expected_attrs, response_data, expected_product_data)
+
+    if check_id is True:
+        assert expected_product_data["id"] == response_data["id"]

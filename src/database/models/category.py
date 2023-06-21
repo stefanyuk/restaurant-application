@@ -12,6 +12,7 @@ class Category(Base):
     name: Mapped[str] = mapped_column(
         String(MAX_CATEGORY_NAME_LENGTH), unique=True, nullable=False
     )
-    products: Mapped[list["Product"]] = relationship(  # noqa: F821
-        back_populates="category"
-    )
+    products: Mapped[list["Product"]] = relationship(back_populates="category")
+
+    SEARCHABLE_FIELDS = {"name"}
+    SORTABLE_FIELDS = {"name"}

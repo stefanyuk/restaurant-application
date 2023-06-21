@@ -12,4 +12,4 @@ class EmployeeProfile(Base):
     available_holidays: Mapped[int]
     hire_date: Mapped[date] = mapped_column(nullable=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    user: Mapped["User"] = relationship(back_populates="employee_profile")  # noqa: F821
+    user: Mapped["User"] = relationship(back_populates="employee_profile")

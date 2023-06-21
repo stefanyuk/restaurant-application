@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr, Field, validator
 
 from src.database.models.constants import MAX_FIRST_NAME_LENGTH, MAX_LAST_NAME_LENGTH
 from src.database.models.order import OrderStatus
-from src.apis.utils import check_phone_number
+from src.apis.utils import check_phone_number, check_if_value_is_not_empty
 
 
 MIN_PASSWORD_LENGTH = 8
@@ -15,10 +15,10 @@ class AddressId(BaseModel):
 
 
 class AddressBase(BaseModel):
-    city: str
-    street: str
+    city: str = Field(..., min_length=1)
+    street: str = Field(..., min_length=1)
     street_number: int = Field(..., gt=0)
-    postal_code: str
+    postal_code: str = Field(..., min_length=1)
 
     class Config:
         orm_mode = True
@@ -38,14 +38,21 @@ class UserPassword(BaseModel):
 
 
 class UserBase(BaseModel):
-    first_name: str = Field(..., max_length=MAX_FIRST_NAME_LENGTH)
-    last_name: str = Field(..., max_length=MAX_LAST_NAME_LENGTH)
+    first_name: str = Field(..., min_length=1, max_length=MAX_FIRST_NAME_LENGTH)
+    last_name: str = Field(..., min_length=1, max_length=MAX_LAST_NAME_LENGTH)
     email: EmailStr
     phone_number: Optional[str] = None
     birth_date: Optional[date] = None
 
     class Config:
         orm_mode = True
+
+    _validate_first_name = validator("first_name", allow_reuse=True)(
+        check_if_value_is_not_empty
+    )
+    _validate_last_name = validator("last_name", allow_reuse=True)(
+        check_if_value_is_not_empty
+    )
 
 
 class UserCreate(UserPassword, UserBase):

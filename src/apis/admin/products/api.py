@@ -1,11 +1,13 @@
-from typing import Optional
-
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Path, status
 from fastapi_pagination.limit_offset import LimitOffsetPage
 from sqlalchemy.orm import Session
 
 from src.apis.common_errors import ErrorResponse, build_http_exception_response
-from src.apis.admin.products.schemas import ProductCreate, ProductOut
+from src.apis.admin.products.schemas import (
+    ProductCreate,
+    ProductOut,
+    ProductFilterParams,
+)
 from src.apis.services.category_service import CategoryDoesNotExist, CategoryService
 from src.apis.services.picture_saver import ServerPictureSaver
 from src.apis.services.product_service import ProductAlreadyExists, ProductService
@@ -18,8 +20,9 @@ ROUTER = APIRouter(prefix="/products")
 
 @ROUTER.post(
     "/",
+    status_code=status.HTTP_201_CREATED,
     responses={
-        status.HTTP_200_OK: {"model": ProductOut},
+        status.HTTP_201_CREATED: {"model": ProductOut},
         status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
     },
 )
@@ -53,18 +56,17 @@ def create_product_api(
 
 @ROUTER.get("/")
 def get_products_list_api(
-    search: Optional[str] = None,
-    sort: Optional[str] = None,
+    filters: ProductFilterParams = Depends(ProductFilterParams),
     db_session: Session = Depends(get_db_session),
 ) -> LimitOffsetPage[ProductOut]:
     """Return list of all existing Product entities."""
     service = ProductService(db_session)
-    return service.read_all(search, sort)
+    return service.read_all(filters.search, filters.sort)
 
 
 @ROUTER.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product_api(
-    product_id: int,
+    product_id: int = Path(..., gt=0),
     db_session: Session = Depends(get_db_session),
 ) -> None:
     """Delete Product entity with the given ID."""

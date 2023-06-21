@@ -1,4 +1,4 @@
-from fastapi import Depends, APIRouter, status
+from fastapi import Depends, APIRouter, Path, status
 
 from src.apis.admin.users.schemas import UserExtendedCreate, UserExtendedOut
 from fastapi_pagination.limit_offset import LimitOffsetPage
@@ -58,7 +58,7 @@ def get_users_list_api(
     },
 )
 def get_user_api(
-    user_id: int, db_session: Session = Depends(get_db_session)
+    user_id: int = Path(..., gt=0), db_session: Session = Depends(get_db_session)
 ) -> UserExtendedOut:
     """Return information about user with the provided id."""
     service = UserService(db_session)
@@ -76,7 +76,7 @@ def get_user_api(
 
 @ROUTER.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user_api(
-    user_id: int,
+    user_id: int = Path(..., gt=0),
     db_session: Session = Depends(get_db_session),
 ):
     service = UserService(db_session)

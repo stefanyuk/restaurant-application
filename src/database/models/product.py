@@ -17,12 +17,11 @@ class Product(Base):
     summary: Mapped[Optional[str]] = mapped_column(Text)
     price: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
     image_file: Mapped[Optional[str]] = mapped_column(nullable=True)
-    category: Mapped["Category"] = relationship(  # noqa: F821
-        back_populates="products",
-    )
-    order_items: Mapped[list["OrderItem"]] = relationship(  # noqa: F821
-        back_populates="product",
-    )
+    category: Mapped["Category"] = relationship(back_populates="products")
+    order_items: Mapped[list["OrderItem"]] = relationship(back_populates="product")
     category_id: Mapped[int] = mapped_column(
         ForeignKey("categories.id"), nullable=False
     )
+
+    SEARCHABLE_FIELDS = {"name"}
+    SORTABLE_FIELDS = {"name"}

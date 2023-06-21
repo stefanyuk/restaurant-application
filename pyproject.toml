@@ -47,13 +47,13 @@ line-length = 88
 
 [tool.mypy]
 ignore_missing_imports = "True"
-exclude = ["alembic.ini", ".env", "alembic"]
+exclude = ["alembic.ini", ".env", "alembic", "api_tests"]
 
 
 [tool.ruff.per-file-ignores]
 "src/database/models/address.py" = ["F821"]
 "src/database/models/category.py" = ["F821"]
-"src/database/models/employee_profiel.py" = ["F821"]
+"src/database/models/employee_profile.py" = ["F821"]
 "src/database/models/order_item.py" = ["F821"]
 "src/database/models/order.py" = ["F821"]
 "src/database/models/product.py" = ["F821"]

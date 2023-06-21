@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from src.apis.users.api import ME_ROUTER, USERS_ROUTER
-from src.apis.admin.router import ADMINS_ROUTER
+from src.apis.admin import ADMINS_ROUTER
 from src.apis.authentication.api import ROUTER as auth_router
 from src.settings import settings
 

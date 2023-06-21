@@ -36,7 +36,3 @@ class ServiceBaseError(Exception):
     def __init__(self, message: str, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.message = message
-
-
-class InvalidToken(ServiceBaseError):
-    """Raised in case when API token is not valid."""
