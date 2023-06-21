@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     issued_at_time_claim_name: str = "iat"
     user_id_claim_name: str = "user_id"
     static_folder_path: str = "src/static/"
-    debug: bool
     base_templates_folder_path: str = "src/templates"
     suppress_send: int = 1
 
