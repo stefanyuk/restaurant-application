@@ -16,12 +16,12 @@ from src.apis.services.email_service import (
 from src.apis.users.schemas import (
     AddressBase,
     AddressOut,
-    OrderCreate,
-    OrderOut,
-    UpdateUser,
+    OrderCreateSchema,
+    UpdateUserSchema,
     UserCreate,
-    UserOut,
     PasswordReset,
+    UserOutSchema,
+    OrderOutSchema,
 )
 from src.database.db import get_db_session
 from src.database.models import User
@@ -39,16 +39,17 @@ ME_ROUTER = APIRouter(prefix="/me", tags=["me"])
 
 @USERS_ROUTER.post(
     "/",
+    response_model=UserOutSchema,
     status_code=status.HTTP_201_CREATED,
     responses={
-        status.HTTP_201_CREATED: {"model": UserOut},
+        status.HTTP_201_CREATED: {"model": UserOutSchema},
         status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
     },
 )
 def create_user_api(
     user_data: UserCreate,
     db_session: Session = Depends(get_db_session),
-) -> UserOut:
+):
     service = UserService(db_session)
 
     try:
@@ -59,7 +60,7 @@ def create_user_api(
             code=status.HTTP_400_BAD_REQUEST,
         )
 
-    return user
+    return {"user": user}
 
 
 @USERS_ROUTER.post("/password", status_code=status.HTTP_202_ACCEPTED)
@@ -107,30 +108,34 @@ def reset_user_password(
 
 @ME_ROUTER.get(
     "/",
+    response_model=UserOutSchema,
     responses={
-        status.HTTP_200_OK: {"model": UserOut},
+        status.HTTP_200_OK: {"model": UserOutSchema},
         status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
     },
 )
-def get_authenticated_user_info(user: User = Depends(authenticated_user)) -> UserOut:
+def get_authenticated_user_info(
+    user: User = Depends(authenticated_user),
+):
     """Return information about currently authenticated user."""
-    return user
+    return {"user": user}
 
 
 @ME_ROUTER.patch(
     "/",
+    response_model=UserOutSchema,
     responses={
-        status.HTTP_200_OK: {"model": UserOut},
+        status.HTTP_200_OK: {"model": UserOutSchema},
         status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
         status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
         status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
     },
 )
 def update_authenticated_user_info(
-    update_data: UpdateUser,
+    update_data: UpdateUserSchema,
     user: User = Depends(authenticated_user),
     db_session: Session = Depends(get_db_session),
-) -> UserOut:
+):
     """Update information about currently authenticated user."""
     service = UserService(db_session)
 
@@ -142,7 +147,7 @@ def update_authenticated_user_info(
             code=status.HTTP_400_BAD_REQUEST,
         )
 
-    return user
+    return {"user": user}
 
 
 @ME_ROUTER.post(
@@ -170,26 +175,28 @@ def create_authenticated_user_address_api(
 
 @ME_ROUTER.post(
     "/orders",
+    response_model=OrderOutSchema,
     status_code=status.HTTP_201_CREATED,
     responses={
-        status.HTTP_201_CREATED: {"model": OrderOut},
+        status.HTTP_201_CREATED: {"model": OrderOutSchema},
         status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
         status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
     },
 )
 async def create_authenticated_user_order_api(
-    order_data: OrderCreate,
+    order: OrderCreateSchema,
+    delivery_address: AddressBase,
     background_tasks: BackgroundTasks,
     user: User = Depends(authenticated_user),
     db_session: Session = Depends(get_db_session),
-) -> OrderOut:
+):
     """Create order for an authenticated user."""
     order_service = OrderService(db_session)
     user_service = UserService(db_session)
-    address = user_service.add_address(user, order_data.delivery_address)
+    address = user_service.add_address(user, delivery_address)
 
     try:
-        order = order_service.create_order(user, order_data, address)
+        order = order_service.create_order(user, order, address)
     except ProductDoesNotExist as error:
         return build_http_exception_response(
             message=error.message,
@@ -198,4 +205,4 @@ async def create_authenticated_user_order_api(
 
     background_tasks.add_task(send_order_creation_notification_email, user, order, fm)
 
-    return order
+    return {"order": order}

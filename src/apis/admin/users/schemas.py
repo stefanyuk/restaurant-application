@@ -1,10 +1,10 @@
 from typing import Optional
 from pydantic import validator
 from src.apis.utils import check_phone_number
-from src.apis.users.schemas import UserBase, UserId, UserPassword
+from src.apis.users.schemas import UserSchema, UserId, UserPassword
 
 
-class UserExtended(UserBase):
+class UserExtended(UserSchema):
     is_admin: Optional[bool] = None
     is_employee: Optional[bool] = None
 
