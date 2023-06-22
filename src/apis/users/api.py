@@ -14,14 +14,15 @@ from src.apis.services.email_service import (
     send_password_reset_email,
 )
 from src.apis.users.schemas import (
-    AddressBase,
-    AddressOut,
+    AddressSchema,
+    AddressBaseSchema,
     OrderCreateSchema,
     UpdateUserSchema,
     UserCreate,
     PasswordReset,
     UserOutSchema,
     OrderOutSchema,
+    AddressOutSchema,
 )
 from src.database.db import get_db_session
 from src.database.models import User
@@ -153,24 +154,25 @@ def update_authenticated_user_info(
 @ME_ROUTER.post(
     "/addresses",
     status_code=status.HTTP_201_CREATED,
+    response_model=AddressOutSchema,
     responses={
-        status.HTTP_201_CREATED: {"model": AddressOut},
+        status.HTTP_201_CREATED: {"model": AddressBaseSchema},
         status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
     },
 )
 def create_authenticated_user_address_api(
-    address_data: AddressBase,
+    address: AddressSchema,
     user: User = Depends(authenticated_user),
     db_session: Session = Depends(get_db_session),
-) -> AddressOut:
+):
     """Create an address for an authenticated user.
 
     Endpoint does not create an address, in case when
     exact same address already exists in user's address list.
     """
     service = UserService(db_session)
-    address = service.add_address(user, address_data)
-    return address
+    address = service.add_address(user, address)
+    return {"address": address}
 
 
 @ME_ROUTER.post(
@@ -185,7 +187,7 @@ def create_authenticated_user_address_api(
 )
 async def create_authenticated_user_order_api(
     order: OrderCreateSchema,
-    delivery_address: AddressBase,
+    delivery_address: AddressSchema,
     background_tasks: BackgroundTasks,
     user: User = Depends(authenticated_user),
     db_session: Session = Depends(get_db_session),

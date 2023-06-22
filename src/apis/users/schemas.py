@@ -14,7 +14,7 @@ class AddressId(BaseModel):
     id: int
 
 
-class AddressBase(BaseModel):
+class AddressSchema(BaseModel):
     city: str = Field(..., min_length=1)
     street: str = Field(..., min_length=1)
     street_number: int = Field(..., gt=0)
@@ -24,9 +24,13 @@ class AddressBase(BaseModel):
         orm_mode = True
 
 
-class AddressOut(AddressBase, AddressId):
+class AddressBaseSchema(AddressSchema, AddressId):
     class Config:
         orm_mode = True
+
+
+class AddressOutSchema(BaseModel):
+    address: AddressBaseSchema
 
 
 class UserId(BaseModel):
@@ -120,7 +124,7 @@ class OrderBaseSchema(OrderSchema, OrderId):
     user_id: int
     status: OrderStatus
     ordered_at: datetime
-    delivery_address: AddressBase
+    delivery_address: AddressSchema
 
 
 class OrderOutSchema(BaseModel):

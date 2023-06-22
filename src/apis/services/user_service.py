@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from src.apis.common_errors import ServiceBaseError
 from src.apis.services.base import BaseService, DataObject
-from src.apis.users.schemas import UserCreate, AddressBase
+from src.apis.users.schemas import UserCreate, AddressSchema
 from src.database.models import User, Address
 
 
@@ -96,7 +96,7 @@ class UserService(BaseService):
     def _find_user_address(
         self,
         user: User,
-        address_data: AddressBase,
+        address_data: AddressSchema,
     ) -> Optional[Address]:
         filters = []
 
@@ -111,7 +111,7 @@ class UserService(BaseService):
 
         return self.db_session.scalars(query).first()
 
-    def add_address(self, user: User, address_data: AddressBase) -> Address:
+    def add_address(self, user: User, address_data: AddressSchema) -> Address:
         """Add new user address.
 
         If user address already exists, function does not create a new one.
@@ -133,7 +133,7 @@ class UserService(BaseService):
         self.db_session.flush()
         return address
 
-    def _create_address_instance(self, address_data: AddressBase) -> Address:
+    def _create_address_instance(self, address_data: AddressSchema) -> Address:
         return Address(
             city=address_data.city,
             street=address_data.street,
