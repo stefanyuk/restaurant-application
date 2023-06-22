@@ -99,11 +99,15 @@ def test_create_auth_user_address_returns_201_on_success(basic_user_client: Test
     response_json = response.json()
 
     assert response.status_code == status.HTTP_201_CREATED
-    assert "id" in response_json
-    assert response_json["city"] == expected_address_data["city"]
-    assert response_json["street"] == expected_address_data["street"]
-    assert response_json["street_number"] == expected_address_data["street_number"]
-    assert response_json["postal_code"] == expected_address_data["postal_code"]
+    assert "address" in response_json
+
+    address_data = response_json["address"]
+
+    assert "id" in address_data
+    assert address_data["city"] == expected_address_data["city"]
+    assert address_data["street"] == expected_address_data["street"]
+    assert address_data["street_number"] == expected_address_data["street_number"]
+    assert address_data["postal_code"] == expected_address_data["postal_code"]
 
 
 def test_create_auth_user_order_returns_201_on_success(
@@ -111,19 +115,22 @@ def test_create_auth_user_order_returns_201_on_success(
 ):
     product = ProductFactory.create()
     address = AddressFactory.create(user=basic_user)
-    expected_order_data = {
+    delivery_address = {
+        "city": address.city,
+        "street": address.street,
+        "street_number": address.street_number,
+        "postal_code": address.postal_code,
+    }
+    order_data = {
         "comments": "some comments",
         "order_items": [{"product_id": product.id, "quantity": 10}],
-        "delivery_address": {
-            "city": address.city,
-            "street": address.street,
-            "street_number": address.street_number,
-            "postal_code": address.postal_code,
-        },
     }
+    expected_order_data = {**order_data, "delivery_address": delivery_address}
     url = app.url_path_for("create_authenticated_user_order_api")
 
-    response = basic_user_client.post(url, json=expected_order_data)
+    response = basic_user_client.post(
+        url, json={"order": order_data, "delivery_address": delivery_address}
+    )
     response_json = response.json()
 
     assert response.status_code == status.HTTP_201_CREATED
@@ -135,20 +142,22 @@ def test_create_auth_user_order_returns_400_when_product_does_not_exist(
 ):
     address = AddressFactory.create(user=basic_user)
     wrong_product_id = 7
-    expected_order_data = {
+    delivery_address = {
+        "city": address.city,
+        "street": address.street,
+        "street_number": address.street_number,
+        "postal_code": address.postal_code,
+    }
+    order_data = {
         "comments": "some comments",
         "order_items": [{"product_id": wrong_product_id, "quantity": 10}],
-        "delivery_address": {
-            "city": address.city,
-            "street": address.street,
-            "street_number": address.street_number,
-            "postal_code": address.postal_code,
-        },
     }
     url = app.url_path_for("create_authenticated_user_order_api")
     expected_error_message = f"Products with ids '{{{wrong_product_id}}}' do not exist."
 
-    response = basic_user_client.post(url, json=expected_order_data)
+    response = basic_user_client.post(
+        url, json={"order": order_data, "delivery_address": delivery_address}
+    )
 
     assert_api_error(
         response.json(),
@@ -162,22 +171,24 @@ def test_create_auth_user_order_returns_422_when_duplicated_order_items_provided
 ):
     product = ProductFactory.create()
     address = AddressFactory.create(user=basic_user)
-    expected_order_data = {
+    delivery_address = {
+        "city": address.city,
+        "street": address.street,
+        "street_number": address.street_number,
+        "postal_code": address.postal_code,
+    }
+    order_data = {
         "comments": "some comments",
         "order_items": [
             {"product_id": product.id, "quantity": 10},
             {"product_id": product.id, "quantity": 10},
         ],
-        "delivery_address": {
-            "city": address.city,
-            "street": address.street,
-            "street_number": address.street_number,
-            "postal_code": address.postal_code,
-        },
     }
     url = app.url_path_for("create_authenticated_user_order_api")
 
-    response = basic_user_client.post(url, json=expected_order_data)
+    response = basic_user_client.post(
+        url, json={"order": order_data, "delivery_address": delivery_address}
+    )
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert response.json()["detail"][0]["msg"] == "Order items must be unique."

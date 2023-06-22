@@ -85,12 +85,16 @@ def assert_order_data(
 ):
     expected_attrs = ("comments", "order_items", "delivery_address")
 
-    assert "id" in response_data, "Attribute 'id' was not found in response."
+    assert "order" in response_data, "Response data is not embedded."
 
-    _assert_attrs(expected_attrs, response_data, expected_order_data)
+    order_data = response_data["order"]
+
+    assert "id" in order_data, "Attribute 'id' was not found in response."
+
+    _assert_attrs(expected_attrs, order_data, expected_order_data)
 
     if check_id is True:
-        assert expected_order_data["id"] == response_data["id"]
+        assert expected_order_data["id"] == order_data["id"]
 
 
 def assert_api_error(
@@ -112,12 +116,16 @@ def assert_basic_user_data(
 ):
     expected_attrs = ("email", "first_name", "last_name", "birth_date", "phone_number")
 
-    assert "id" in response_data, "Attribute 'id' was not found in response."
+    assert "user" in response_data, "Response data is not embedded."
 
-    _assert_attrs(expected_attrs, response_data, expected_user_data)
+    user_data = response_data["user"]
+
+    assert "id" in user_data, "Attribute 'id' was not found in response."
+
+    _assert_attrs(expected_attrs, user_data, expected_user_data)
 
     if check_id is True:
-        assert expected_user_data["id"] == response_data["id"]
+        assert expected_user_data["id"] == user_data["id"]
 
 
 def _assert_attrs(
@@ -145,12 +153,16 @@ def assert_extended_user_data(
         "is_admin",
     )
 
-    assert "id" in response_data, "Attribute 'id' was not found in response."
+    assert "user" in response_data, "Response data is not embedded."
 
-    _assert_attrs(expected_attrs, response_data, expected_user_data)
+    user_data = response_data["user"]
+
+    assert "id" in user_data, "Attribute 'id' was not found in response."
+
+    _assert_attrs(expected_attrs, user_data, expected_user_data)
 
     if check_id is True:
-        assert expected_user_data["id"] == response_data["id"]
+        assert expected_user_data["id"] == user_data["id"]
 
 
 def assert_category_data(
