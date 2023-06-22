@@ -37,7 +37,7 @@ class UserPassword(BaseModel):
     password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
 
 
-class UserBase(BaseModel):
+class UserSchema(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=MAX_FIRST_NAME_LENGTH)
     last_name: str = Field(..., min_length=1, max_length=MAX_LAST_NAME_LENGTH)
     email: EmailStr
@@ -55,18 +55,22 @@ class UserBase(BaseModel):
     )
 
 
-class UserCreate(UserPassword, UserBase):
+class UserCreate(UserPassword, UserSchema):
     _validate_phone_number = validator("phone_number", allow_reuse=True)(
         check_phone_number
     )
 
 
-class UserOut(UserBase, UserId):
+class UserBaseSchema(UserSchema, UserId):
     class Config:
         orm_mode = True
 
 
-class UpdateUser(BaseModel):
+class UserOutSchema(BaseModel):
+    user: UserBaseSchema
+
+
+class UpdateUserSchema(BaseModel):
     first_name: str = Field(None, max_length=MAX_FIRST_NAME_LENGTH)
     last_name: str = Field(None, max_length=MAX_LAST_NAME_LENGTH)
     email: EmailStr = Field(None)
@@ -78,7 +82,7 @@ class UpdateUser(BaseModel):
     )
 
 
-class OrderItemData(BaseModel):
+class OrderItemSchema(BaseModel):
     product_id: int = Field(..., gt=0)
     quantity: int = Field(..., gt=0)
 
@@ -90,9 +94,9 @@ class OrderId(BaseModel):
     id: int
 
 
-class OrderBase(BaseModel):
+class OrderSchema(BaseModel):
     comments: Optional[str] = None
-    order_items: list[OrderItemData]
+    order_items: list[OrderItemSchema]
 
     class Config:
         orm_mode = True
@@ -108,15 +112,19 @@ class OrderBase(BaseModel):
         return order_items_data
 
 
-class OrderCreate(OrderBase):
-    delivery_address: AddressBase
+class OrderCreateSchema(OrderSchema):
+    pass
 
 
-class OrderOut(OrderBase, OrderId):
+class OrderBaseSchema(OrderSchema, OrderId):
     user_id: int
     status: OrderStatus
     ordered_at: datetime
     delivery_address: AddressBase
+
+
+class OrderOutSchema(BaseModel):
+    order: OrderBaseSchema
 
 
 class PasswordReset(UserPassword):

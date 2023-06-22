@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from src.apis.common_errors import ServiceBaseError
 from src.apis.services.base import BaseService
 from src.database.models import Order, OrderItem, Product, User, Address
-from src.apis.users.schemas import OrderCreate, OrderItemData
+from src.apis.users.schemas import OrderCreateSchema, OrderItemSchema
 
 
 class ProductDoesNotExist(ServiceBaseError):
@@ -17,7 +17,9 @@ class OrderService(BaseService):
     model = Order
     db_session: Session
 
-    def _get_ordered_products(self, order_items: list[OrderItemData]) -> list[Product]:
+    def _get_ordered_products(
+        self, order_items: list[OrderItemSchema]
+    ) -> list[Product]:
         received_product_ids = {item.product_id for item in order_items}
         query = select(Product).where(Product.id.in_(received_product_ids))
         products = self.db_session.scalars(query).all()
@@ -32,7 +34,7 @@ class OrderService(BaseService):
         return products
 
     def create_order(
-        self, user: User, order_data: OrderCreate, delivery_address: Address
+        self, user: User, order_data: OrderCreateSchema, delivery_address: Address
     ) -> Order:
         products = self._get_ordered_products(order_data.order_items)
         order_instance = self._create_order_instance(order_data, delivery_address)
@@ -46,7 +48,7 @@ class OrderService(BaseService):
         self,
         order: Order,
         ordered_products: list[Product],
-        order_items_data: list[OrderItemData],
+        order_items_data: list[OrderItemSchema],
     ):
         for product, order_item_data in zip(
             sorted(ordered_products, key=lambda x: x.id),
@@ -56,12 +58,12 @@ class OrderService(BaseService):
             order.order_items.append(order_item)
 
     def _create_order_instance(
-        self, order_data: OrderCreate, delivery_address: Address
+        self, order_data: OrderCreateSchema, delivery_address: Address
     ) -> Order:
         return Order(comments=order_data.comments, address_id=delivery_address.id)
 
     def _create_order_item_instance(
-        self, product: Product, order_item_data: OrderItemData
+        self, product: Product, order_item_data: OrderItemSchema
     ):
         return OrderItem(
             product_id=order_item_data.product_id,
