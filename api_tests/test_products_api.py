@@ -9,6 +9,7 @@ from api_tests.utils import (
     assert_product_data,
     assert_api_error,
     assert_offset_limit_pagination_data,
+    assert_product_collection,
 )
 from api_tests.factories import ProductFactory, CategoryFactory
 from src.apis.constants import DEFAULT_LIMIT, DEFAULT_OFFSET
@@ -139,10 +140,15 @@ def test_get_products_list_returns_200_on_success(admin_user_client: TestClient)
     response = admin_user_client.get(ENDPOINTS["LIST"])
     response_json = response.json()
 
-    assert response.status_code == status.HTTP_200_OK
-    assert sorted(response_json["items"], key=lambda x: x["id"]) == sorted(
-        expected_products_data, key=lambda x: x["id"]
+    assert "items" in response_json, "Paginated collection is not embedded."
+
+    sorted_response_data = sorted(
+        response_json["items"], key=lambda x: x["product"]["id"]
     )
+    sorted_expected_data = sorted(expected_products_data, key=lambda x: x["id"])
+
+    assert response.status_code == status.HTTP_200_OK
+    assert_product_collection(sorted_response_data, sorted_expected_data)
     assert_offset_limit_pagination_data(
         response_json,
         expected_items_len=len(expected_products),
@@ -176,10 +182,15 @@ def test_get_products_list_returns_200_when_pagination_parameters_provided(
     )
     response_json = response.json()
 
-    assert response.status_code == status.HTTP_200_OK
-    assert sorted(response_json["items"], key=lambda x: x["id"]) == sorted(
-        expected_products_data, key=lambda x: x["id"]
+    assert "items" in response_json, "Paginated collection is not embedded."
+
+    sorted_response_data = sorted(
+        response_json["items"], key=lambda x: x["product"]["id"]
     )
+    sorted_expected_data = sorted(expected_products_data, key=lambda x: x["id"])
+
+    assert response.status_code == status.HTTP_200_OK
+    assert_product_collection(sorted_response_data, sorted_expected_data)
     assert_offset_limit_pagination_data(
         response_json,
         expected_items_len=len(expected_products_data),
@@ -210,6 +221,8 @@ def test_get_products_list_returns_422_when_wrong_sorting_parameter_provided(
     (
         ("-name", 1),
         ("name", 0),
+        ("-price", 1),
+        ("price", 0),
     ),
 )
 def test_get_products_list_returns_products_in_required_order(
@@ -229,16 +242,19 @@ def test_get_products_list_returns_products_in_required_order(
                 "category_id": product.category_id,
             }
         )
-
-    response = admin_user_client.get(ENDPOINTS["LIST"], params={"sort": sort_field})
-    response_json = response.json()
-
     expected_products_data = sorted(
         expected_products_data, key=lambda x: x[field], reverse=reverse
     )
 
+    response = admin_user_client.get(ENDPOINTS["LIST"], params={"sort": sort_field})
+    response_json = response.json()
+
+    assert "items" in response_json, "Paginated collection is not embedded."
+
+    response_data = response_json["items"]
+
     assert response.status_code == status.HTTP_200_OK
-    assert response_json["items"] == expected_products_data
+    assert_product_collection(response_data, expected_products_data)
     assert_offset_limit_pagination_data(
         response_json,
         expected_items_len=len(expected_products),

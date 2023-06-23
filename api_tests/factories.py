@@ -1,6 +1,7 @@
 import factory
 from factory.alchemy import SQLAlchemyModelFactory
 from src.database.models import User, Address, Order, OrderItem, Product, Category
+from src.database.models.order import OrderStatus
 
 
 CURR_MODULE_PATH = "api_tests.factories"
@@ -41,13 +42,14 @@ class OrderFactory(SQLAlchemyModelFactory):
         model = Order
         sqlalchemy_session_persistence = "flush"
 
-    status = "AWAITING"
+    status = OrderStatus.AWAITING.name
     ordered_at = factory.Faker("date_time")
     comments = factory.Faker("text")
     user = factory.SubFactory(UserFactory)
     order_items = factory.RelatedFactoryList(
         f"{CURR_MODULE_PATH}.OrderItemFactory", "order", size=3
     )
+    delivery_address = factory.SubFactory(AddressFactory)
 
 
 class OrderItemFactory(SQLAlchemyModelFactory):
@@ -67,7 +69,7 @@ class ProductFactory(SQLAlchemyModelFactory):
 
     name = factory.Sequence(lambda n: f"Product {n}")
     summary = factory.Faker("text")
-    price = factory.Faker("pydecimal", left_digits=4, right_digits=2, min_value=5)
+    price = factory.Faker("pyint", min_value=5, max_value=500)
     category = factory.SubFactory(f"{CURR_MODULE_PATH}.CategoryFactory")
 
 

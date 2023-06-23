@@ -1,10 +1,14 @@
-from sqlalchemy import select
+from sqlalchemy import Select, select, text
 from sqlalchemy.orm import Session
 
 from src.apis.common_errors import ServiceBaseError
-from src.apis.services.base import BaseService
+from src.apis.services.base import BaseService, FilterData
 from src.database.models import Order, OrderItem, Product, User, Address
 from src.apis.users.schemas import OrderCreateSchema, OrderItemSchema
+from sqlalchemy.sql import func
+from sqlalchemy.sql.selectable import Subquery
+
+TOTAL_PRICE_FIELD = "total_price"
 
 
 class ProductDoesNotExist(ServiceBaseError):
@@ -70,3 +74,45 @@ class OrderService(BaseService):
             quantity=order_item_data.quantity,
             product_price=product.price,
         )
+
+    def _prepare_read_all_query(
+        self, query: Select, sort: str | None, filters: FilterData
+    ) -> Select:
+        total_price_subquery = self._create_order_total_price_subquery()
+        query = query.join(
+            total_price_subquery,
+            self.model.id == total_price_subquery.c.order_id,
+        ).add_columns(getattr(total_price_subquery.c, TOTAL_PRICE_FIELD))
+        return super()._prepare_read_all_query(query, sort, filters)
+
+    def _get_filtered_query(self, query: Select, filters: FilterData) -> Select:
+        if user_id := filters.get("user_id", None):
+            query = query.where(self.model.user_id == user_id)
+
+        return super()._get_filtered_query(query, filters)
+
+    def _create_order_total_price_subquery(self) -> Subquery:
+        """Create and return subquery to calculate total order price.
+
+        Returns:
+            Subquery: SQLAlchemy Subquery object
+        """
+        return (
+            select(
+                OrderItem.order_id,
+                func.sum(OrderItem.product_price * OrderItem.quantity).label(
+                    TOTAL_PRICE_FIELD
+                ),
+            )
+            .group_by(OrderItem.order_id)
+            .subquery()
+        )
+
+    def _apply_sorting(self, query: Select, sort: str) -> Select:
+        """Apply sorting to the given query based on the provided sort parameter."""
+        sort_field = sort.lstrip("-")
+
+        if sort.startswith("-"):
+            return query.order_by(text(f"{sort_field} DESC"))
+        else:
+            return query.order_by(text(sort_field))

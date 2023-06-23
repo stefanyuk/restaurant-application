@@ -1,3 +1,4 @@
+from typing import Annotated
 from fastapi import APIRouter, Depends, Path, status
 from fastapi_pagination.limit_offset import LimitOffsetPage
 from sqlalchemy.orm import Session
@@ -5,7 +6,7 @@ from sqlalchemy.orm import Session
 from src.apis.common_errors import ErrorResponse, build_http_exception_response
 from src.apis.admin.products.schemas import (
     ProductCreate,
-    ProductOut,
+    ProductOutSchema,
     ProductFilterParams,
 )
 from src.apis.services.category_service import CategoryDoesNotExist, CategoryService
@@ -20,16 +21,17 @@ ROUTER = APIRouter(prefix="/products")
 
 @ROUTER.post(
     "/",
+    response_model=ProductOutSchema,
     status_code=status.HTTP_201_CREATED,
     responses={
-        status.HTTP_201_CREATED: {"model": ProductOut},
+        status.HTTP_201_CREATED: {"model": ProductOutSchema},
         status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
     },
 )
 def create_product_api(
     product_data: ProductCreate,
     db_session: Session = Depends(get_db_session),
-) -> ProductOut:
+):
     """Create new Product entity."""
     picture_saver = ServerPictureSaver(settings)
     product_service = ProductService(picture_saver=picture_saver, db_session=db_session)
@@ -56,12 +58,12 @@ def create_product_api(
 
 @ROUTER.get("/")
 def get_products_list_api(
-    filters: ProductFilterParams = Depends(ProductFilterParams),
+    filters: Annotated[ProductFilterParams, Depends()],
     db_session: Session = Depends(get_db_session),
-) -> LimitOffsetPage[ProductOut]:
+) -> LimitOffsetPage[ProductOutSchema]:
     """Return list of all existing Product entities."""
     service = ProductService(db_session)
-    return service.read_all(filters.search, filters.sort)
+    return service.read_all(filters.sort, filters.dict(exclude={"sort"}))
 
 
 @ROUTER.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)

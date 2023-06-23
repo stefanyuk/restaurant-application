@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from src.database.models import Base
 
 engine = create_engine(
-    "postgresql+psycopg2://lacrema:lacrema123@localhost:5432/lacrema_db"
+    "postgresql+psycopg2://postgres:postgres1234@localhost:5432/restaurant_db"
 )
 db_session = sessionmaker(engine)
 

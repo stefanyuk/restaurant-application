@@ -24,4 +24,4 @@ class Product(Base):
     )
 
     SEARCHABLE_FIELDS = {"name"}
-    SORTABLE_FIELDS = {"name"}
+    SORTABLE_FIELDS = {"name", "price"}
