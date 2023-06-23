@@ -6,7 +6,7 @@ from pydantic import BaseSettings, Field
 class Settings(BaseSettings):
     """Class representing application settings."""
 
-    api_v1_version_prefix: str = "/v1"
+    api_v1_version_prefix: str = "/api/v1"
     host: str = Field("127.0.0.1")
     port: str = Field("8080")
     db_connection_string: str

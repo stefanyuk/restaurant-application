@@ -183,6 +183,14 @@ python-versions = ">=3.7"
 test = ["pytest (>=6)"]
 
 [[package]]
+name = "factory"
+version = "1.2"
+description = "Object Oriented Currying"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "factory-boy"
 version = "3.2.1"
 description = "A versatile test fixtures replacement based on thoughtbot's factory_bot for Ruby."
@@ -812,7 +820,7 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "2aca4845e5cfc7658de69813167721b7c68f0611969d9fb8194ca0086ba92fb9"
+content-hash = "0e9a456535f1e3391726689ba0590281e20ac77bba25c3f3a735ecba311bdab9"
 
 [metadata.files]
 aiosmtplib = []
@@ -832,6 +840,7 @@ dnspython = []
 ecdsa = []
 email-validator = []
 exceptiongroup = []
+factory = []
 factory-boy = []
 faker = []
 fastapi = []

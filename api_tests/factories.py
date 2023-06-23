@@ -26,7 +26,7 @@ class UserFactory(SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = "flush"
 
     email = factory.Sequence(lambda n: f"user{n}@example.com")
-    password_hash = "password_hash"
+    password = "strong_password"
     first_name = factory.Faker("first_name")
     last_name = factory.Faker("last_name")
     phone_number = factory.Faker("phone_number")
