@@ -90,29 +90,36 @@ def test_authenticated_user_endpoints_return_403_when_token_is_invalid(
     )
 
 
-def test_get_tokens_for_user_returns_tokens_pair(
-    api_client: TestClient, basic_user: User
-):
+def test_get_tokens_for_user_returns_tokens_pair(api_client: TestClient):
+    user_password = "strongpassword"
+    user = UserFactory.create(password=user_password)
     url = app.url_path_for("get_tokens_for_user")
 
-    response = api_client.post(url, json={"email": basic_user.email})
+    response = api_client.post(
+        url, data={"username": user.email, "password": user_password}
+    )
     response_json = response.json()
 
     assert response.status_code == status.HTTP_200_OK
-    assert "access" in response_json
-    assert "refresh" in response_json
+    assert "access_token" in response_json
+    assert "refresh_token" in response_json
+    assert "token_type" in response_json
 
 
-def test_get_tokens_for_user_returns_404_when_user_with_provided_email_was_not_found(
+def test_get_tokens_for_user_returns_401_when_provided_wrong_credentials(
     api_client: TestClient,
 ):
-    user_email = "wrong_email@example.com"
-    expected_error_message = f"User with email '{user_email}' was not found."
+    user = UserFactory.create(password="randompassword")
+    expected_error_message = "Incorrect username or password"
     url = app.url_path_for("get_tokens_for_user")
 
-    response = api_client.post(url, json={"email": user_email})
+    response = api_client.post(
+        url, data={"username": user.email, "password": "some_password"}
+    )
 
-    assert_api_error(response.json(), expected_error_message, status.HTTP_404_NOT_FOUND)
+    assert_api_error(
+        response.json(), expected_error_message, status.HTTP_401_UNAUTHORIZED
+    )
 
 
 def test_refresh_token_returns_new_access_token_on_success(
@@ -124,37 +131,39 @@ def test_refresh_token_returns_new_access_token_on_success(
         basic_user, settings.refresh_token_lifetime
     )
 
-    response = api_client.post(url, json={"refresh": refresh_token})
+    response = api_client.post(url, json={"refresh_token": refresh_token})
 
     assert response.status_code == status.HTTP_200_OK
-    assert "access" in response.json()
+    assert "access_token" in response.json()
 
 
 def test_refresh_token_returns_401_when_token_is_invalid(api_client: TestClient):
     url = app.url_path_for("refresh_token")
     expected_error_message = "Refresh token is invalid"
 
-    response = api_client.post(url, json={"refresh": "refresh_token"})
+    response = api_client.post(url, json={"refresh_token": "refresh_token"})
 
     assert_api_error(
         response.json(), expected_error_message, status.HTTP_401_UNAUTHORIZED
     )
 
 
-def test_refresh_token_returns_404_when_user_from_token_payload_was_not_found(
+def test_refresh_token_returns_401_when_user_from_token_payload_was_not_found(
     api_client: TestClient,
 ):
     url = app.url_path_for("refresh_token")
-    expected_error_message = "User with id from payload was not found."
+    expected_error_message = "Refresh token is invalid"
     user = UserFactory.build(id=10)
     token_backend = create_jwt_token_backend()
     refresh_token = token_backend.create_api_token_for_user(
         user, settings.refresh_token_lifetime
     )
 
-    response = api_client.post(url, json={"refresh": refresh_token})
+    response = api_client.post(url, json={"refresh_token": refresh_token})
 
-    assert_api_error(response.json(), expected_error_message, status.HTTP_404_NOT_FOUND)
+    assert_api_error(
+        response.json(), expected_error_message, status.HTTP_401_UNAUTHORIZED
+    )
 
 
 def test_create_user_returns_201_on_success(api_client: TestClient):
@@ -175,11 +184,12 @@ def test_create_user_returns_201_on_success(api_client: TestClient):
     assert_basic_user_data(response_json, new_user_data, check_id=False)
     assert "tokens" in response_json, "Tokens were not found in response."
     assert (
-        "access" in response_json["tokens"]
+        "access_token" in response_json["tokens"]
     ), "Access token was not found in response."
     assert (
-        "refresh" in response_json["tokens"]
+        "refresh_token" in response_json["tokens"]
     ), "Refresh token was not found in response."
+    assert response_json["tokens"]["token_type"] == "bearer"
 
 
 @pytest.mark.parametrize(

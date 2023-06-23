@@ -1,3 +1,4 @@
+from typing import Any, Dict, Optional
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel
 
@@ -19,7 +20,9 @@ class ErrorResponse(BaseModel):
     detail: ErrorDetails
 
 
-def build_http_exception_response(message, code):
+def build_http_exception_response(
+    message, code, headers: Optional[Dict[str, Any]] = None
+):
     """
     Build and return API error response object.
 
@@ -27,7 +30,9 @@ def build_http_exception_response(message, code):
     :param code: int, HTTP error code
     """
 
-    raise HTTPException(status_code=code, detail={"message": message, "code": code})
+    raise HTTPException(
+        status_code=code, detail={"message": message, "code": code}, headers=headers
+    )
 
 
 class ServiceBaseError(Exception):
