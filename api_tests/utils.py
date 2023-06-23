@@ -1,7 +1,7 @@
 from typing import Any, Mapping, Sequence
 from datetime import datetime
 from src.database.models import User
-
+from src.apis.users.schemas import MIN_PASSWORD_LENGTH
 
 ResponseData = Mapping[str, Any]
 ExpectedData = Mapping[str, Any]
@@ -269,3 +269,19 @@ def assert_user_collection_data(
 
     for expected_data, actual_data in zip(expected_users_data, response_data):
         assert_extended_user_data(actual_data, expected_data)
+
+
+def create_wrong_user_payload(wrong_field_name: str, wrong_field_value: str):
+    """Create and return user data with the given wrong field."""
+    new_user_data = {
+        "email": "test@example.com",
+        "first_name": "test_user",
+        "last_name": "test_user",
+        "phone_number": "+48567863891",
+        "birth_date": "1995-06-25",
+        "password": MIN_PASSWORD_LENGTH * "a",
+    }
+
+    new_user_data[wrong_field_name] = wrong_field_value
+
+    return new_user_data

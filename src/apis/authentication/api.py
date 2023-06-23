@@ -6,15 +6,58 @@ from src.apis.token_backend import (
     InvalidToken,
 )
 from src.apis.common_errors import build_http_exception_response, ErrorResponse
-from src.apis.services.user_service import UserService, UserDoesNotExist
+from src.apis.services.user_service import (
+    UserService,
+    UserDoesNotExist,
+    UserAlreadyExists,
+)
 
 from src.database.db import get_db_session
 from sqlalchemy.orm import Session
 from src.settings import settings
-from src.apis.authentication.schemas import RefreshToken, TokensData, AccessToken
-
+from src.apis.authentication.schemas import (
+    RefreshToken,
+    TokensData,
+    AccessToken,
+    SignUpResponseSchema,
+)
+from src.apis.users.schemas import UserCreateSchema
 
 ROUTER = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@ROUTER.post(
+    "/signup",
+    response_model=SignUpResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_201_CREATED: {"model": SignUpResponseSchema},
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+    },
+)
+def create_user_api(
+    user_data: UserCreateSchema,
+    db_session: Session = Depends(get_db_session),
+    token_backend: APITokenBackend = Depends(create_jwt_token_backend),
+):
+    service = UserService(db_session)
+
+    try:
+        user = service.create_user(user_data)
+    except UserAlreadyExists as error:
+        return build_http_exception_response(
+            message=error.message,
+            code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    access_token = token_backend.create_api_token_for_user(
+        user, settings.access_token_lifetime
+    )
+    refresh_token = token_backend.create_api_token_for_user(
+        user, settings.refresh_token_lifetime
+    )
+
+    return {"user": user, "tokens": {"access": access_token, "refresh": refresh_token}}
 
 
 @ROUTER.post(

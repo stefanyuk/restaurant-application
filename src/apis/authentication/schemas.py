@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from src.apis.users.schemas import UserBaseSchema
 
 
 class AccessToken(BaseModel):
@@ -14,3 +15,8 @@ class TokensData(RefreshToken, AccessToken):
 
     refresh: str
     access: str
+
+
+class SignUpResponseSchema(BaseModel):
+    tokens: TokensData
+    user: UserBaseSchema
