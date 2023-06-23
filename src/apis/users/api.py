@@ -19,7 +19,6 @@ from src.apis.users.schemas import (
     AddressBaseSchema,
     OrderCreateSchema,
     UpdateUserSchema,
-    UserCreateSchema,
     PasswordResetSchema,
     UserOutSchema,
     OrderOutSchema,
@@ -39,32 +38,6 @@ from src.apis.services.email_service import fm
 
 USERS_ROUTER = APIRouter(prefix="/users", tags=["users"])
 ME_ROUTER = APIRouter(prefix="/me", tags=["me"])
-
-
-@USERS_ROUTER.post(
-    "/",
-    response_model=UserOutSchema,
-    status_code=status.HTTP_201_CREATED,
-    responses={
-        status.HTTP_201_CREATED: {"model": UserOutSchema},
-        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
-    },
-)
-def create_user_api(
-    user_data: UserCreateSchema,
-    db_session: Session = Depends(get_db_session),
-):
-    service = UserService(db_session)
-
-    try:
-        user = service.create_user(user_data)
-    except UserAlreadyExists as error:
-        return build_http_exception_response(
-            message=error.message,
-            code=status.HTTP_400_BAD_REQUEST,
-        )
-
-    return {"user": user}
 
 
 @USERS_ROUTER.post("/password", status_code=status.HTTP_202_ACCEPTED)

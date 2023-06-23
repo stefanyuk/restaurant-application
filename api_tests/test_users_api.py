@@ -17,6 +17,7 @@ from api_tests.utils import (
     assert_address_data,
     assert_orders_collection,
     assert_user_collection_data,
+    create_wrong_user_payload,
 )
 from api_tests.factories import (
     UserFactory,
@@ -28,26 +29,8 @@ from src.apis.services.email_service import fm
 from src.settings import settings
 from src.apis.users.schemas import MIN_PASSWORD_LENGTH
 from src.apis.token_backend import create_jwt_token_backend
-from src.database.models.constants import MAX_FIRST_NAME_LENGTH
-from src.database.models.constants import MAX_LAST_NAME_LENGTH
 from src.apis.constants import DEFAULT_LIMIT, DEFAULT_OFFSET
 from src.database.models.order import OrderStatus
-
-
-def create_wrong_user_payload(wrong_field_name: str, wrong_field_value: str):
-    """Create and return user data with the given wrong field."""
-    new_user_data = {
-        "email": "test@example.com",
-        "first_name": "test_user",
-        "last_name": "test_user",
-        "phone_number": "+48567863891",
-        "birth_date": "1995-06-25",
-        "password": MIN_PASSWORD_LENGTH * "a",
-    }
-
-    new_user_data[wrong_field_name] = wrong_field_value
-
-    return new_user_data
 
 
 def test_get_users_list_returns_200_on_success(
@@ -288,100 +271,6 @@ def test_reset_user_password_returns_204_on_success(
     response = api_client.patch(url, json=payload)
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
-
-
-def test_create_user_returns_201_on_success(api_client: TestClient):
-    url = app.url_path_for("create_user_api")
-    new_user_data = {
-        "email": "test@example.com",
-        "first_name": "test_user",
-        "last_name": "test_user",
-        "phone_number": "+48567863891",
-        "birth_date": "1995-06-25",
-        "password": MIN_PASSWORD_LENGTH * "a",
-    }
-
-    response = api_client.post(url, json=new_user_data)
-
-    assert response.status_code == status.HTTP_201_CREATED
-    assert_basic_user_data(response.json(), new_user_data, check_id=False)
-
-
-@pytest.mark.parametrize(
-    "wrong_user_data, expected_error_message",
-    [
-        (
-            create_wrong_user_payload("email", "wrong_email"),
-            "value is not a valid email address",
-        ),
-        (
-            create_wrong_user_payload("password", (MIN_PASSWORD_LENGTH - 1) * "a"),
-            f"ensure this value has at least {MIN_PASSWORD_LENGTH} characters",
-        ),
-        (
-            create_wrong_user_payload("phone_number", "12345678910"),
-            "Provided phone number is incorrect.",
-        ),
-        (
-            create_wrong_user_payload("phone_number", "+48345678"),
-            "Provided phone number is incorrect.",
-        ),
-        (
-            create_wrong_user_payload("first_name", ""),
-            "ensure this value has at least 1 characters",
-        ),
-        (
-            create_wrong_user_payload("first_name", "a" * (MAX_FIRST_NAME_LENGTH + 1)),
-            f"ensure this value has at most {MAX_FIRST_NAME_LENGTH} characters",
-        ),
-        (
-            create_wrong_user_payload("last_name", ""),
-            "ensure this value has at least 1 characters",
-        ),
-        (
-            create_wrong_user_payload("last_name", "a" * (MAX_LAST_NAME_LENGTH + 1)),
-            f"ensure this value has at most {MAX_LAST_NAME_LENGTH} characters",
-        ),
-        (
-            create_wrong_user_payload("last_name", "      "),
-            "Value cannot be empty.",
-        ),
-        (
-            create_wrong_user_payload("first_name", "      "),
-            "Value cannot be empty.",
-        ),
-    ],
-)
-def test_create_user_returns_422_when_payload_is_wrong(
-    api_client: TestClient, wrong_user_data: dict[str, Any], expected_error_message: str
-):
-    url = app.url_path_for("create_user_api")
-
-    response = api_client.post(url, json=wrong_user_data)
-
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-    assert response.json()["detail"][0]["msg"] == expected_error_message
-
-
-def test_create_user_returns_400_when_user_with_the_provided_email_already_exists(
-    api_client: TestClient, admin_user: User
-):
-    expected_error_message = f"User with email '{admin_user.email}' already exists."
-    url = app.url_path_for("create_user_api")
-    new_user_data = {
-        "email": admin_user.email,
-        "first_name": "test_user",
-        "last_name": "test_user",
-        "phone_number": "+48567863891",
-        "birth_date": "1995-06-25",
-        "password": MIN_PASSWORD_LENGTH * "a",
-    }
-
-    response = api_client.post(url, json=new_user_data)
-
-    assert_api_error(
-        response.json(), expected_error_message, status.HTTP_400_BAD_REQUEST
-    )
 
 
 def test_update_authenticated_user_info_returns_200_on_success(
