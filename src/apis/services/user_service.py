@@ -1,13 +1,16 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING, Union
 from sqlalchemy import and_, select
 
 from sqlalchemy.orm import Session
 
 from src.apis.common_errors import ServiceBaseError
 from src.apis.services.base import BaseService, DataObject
-from src.apis.users.schemas import UserCreate, AddressSchema
+from src.apis.users.schemas import UserCreateSchema, AddressSchema
 from src.database.models import User, Address
+
+if TYPE_CHECKING:
+    from src.apis.admin.users.schemas import UserExtendedCreateSchema
 
 
 class UserAlreadyExists(ServiceBaseError):
@@ -35,7 +38,9 @@ class UserService(BaseService):
                 message=f"User with email '{email}' already exists."
             )
 
-    def create_user(self, user_data: UserCreate) -> User:
+    def create_user(
+        self, user_data: Union["UserExtendedCreateSchema", "UserCreateSchema"]
+    ) -> User:
         """Create and persist new user.
 
         Args:
@@ -140,3 +145,23 @@ class UserService(BaseService):
             street_number=address_data.street_number,
             postal_code=address_data.postal_code,
         )
+
+    def get_user_delivery_address(
+        self, user: User, address_id: Optional[int] = None
+    ) -> Optional[Address]:
+        filters = [Address.user_id == user.id]
+
+        if address_id is not None:
+            filters.append(Address.id == address_id)
+
+        query = (
+            select(Address)
+            .where(and_(*filters))
+            .order_by(Address.created_at.desc())
+            .limit(1)
+        )
+
+        return self.db_session.scalars(query).first()
+
+    def update_user_address_data(self, address: Address, new_address_data: DataObject):
+        return self.update(address, new_address_data)

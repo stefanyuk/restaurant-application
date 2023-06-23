@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Body, Depends, status
+from fastapi_pagination import LimitOffsetPage
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 from fastapi import BackgroundTasks
@@ -18,11 +19,13 @@ from src.apis.users.schemas import (
     AddressBaseSchema,
     OrderCreateSchema,
     UpdateUserSchema,
-    UserCreate,
-    PasswordReset,
+    UserCreateSchema,
+    PasswordResetSchema,
     UserOutSchema,
     OrderOutSchema,
     AddressOutSchema,
+    AddressUpdateSchema,
+    OrderFilterParamsSchema,
 )
 from src.database.db import get_db_session
 from src.database.models import User
@@ -48,7 +51,7 @@ ME_ROUTER = APIRouter(prefix="/me", tags=["me"])
     },
 )
 def create_user_api(
-    user_data: UserCreate,
+    user_data: UserCreateSchema,
     db_session: Session = Depends(get_db_session),
 ):
     service = UserService(db_session)
@@ -91,7 +94,7 @@ async def obtain_reset_password_email(
     },
 )
 def reset_user_password(
-    reset_password_data: PasswordReset,
+    reset_password_data: PasswordResetSchema,
     db_session: Session = Depends(get_db_session),
     token_backend: APITokenBackend = Depends(create_jwt_token_backend),
 ):
@@ -117,9 +120,12 @@ def reset_user_password(
 )
 def get_authenticated_user_info(
     user: User = Depends(authenticated_user),
+    db_session: Session = Depends(get_db_session),
 ):
     """Return information about currently authenticated user."""
-    return {"user": user}
+    service = UserService(db_session)
+    user_delivery_address = service.get_user_delivery_address(user)
+    return {"user": user, "delivery_address": user_delivery_address}
 
 
 @ME_ROUTER.patch(
@@ -161,7 +167,7 @@ def update_authenticated_user_info(
     },
 )
 def create_authenticated_user_address_api(
-    address: AddressSchema,
+    address_data: AddressSchema,
     user: User = Depends(authenticated_user),
     db_session: Session = Depends(get_db_session),
 ):
@@ -171,8 +177,8 @@ def create_authenticated_user_address_api(
     exact same address already exists in user's address list.
     """
     service = UserService(db_session)
-    address = service.add_address(user, address)
-    return {"address": address}
+    address = service.add_address(user, address_data)
+    return {"delivery_address": address}
 
 
 @ME_ROUTER.post(
@@ -198,13 +204,67 @@ async def create_authenticated_user_order_api(
     address = user_service.add_address(user, delivery_address)
 
     try:
-        order = order_service.create_order(user, order, address)
+        new_order = order_service.create_order(user, order, address)
     except ProductDoesNotExist as error:
         return build_http_exception_response(
             message=error.message,
             code=status.HTTP_400_BAD_REQUEST,
         )
 
-    background_tasks.add_task(send_order_creation_notification_email, user, order, fm)
+    background_tasks.add_task(
+        send_order_creation_notification_email, user, new_order, fm
+    )
 
-    return {"order": order}
+    return {"order": new_order, "delivery_address": address}
+
+
+@ME_ROUTER.patch(
+    "/addresses/{address_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=AddressOutSchema,
+    responses={
+        status.HTTP_201_CREATED: {"model": AddressBaseSchema},
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+    },
+)
+def update_auth_user_address(
+    address_id: int,
+    address_data: AddressUpdateSchema,
+    db_session: Session = Depends(get_db_session),
+    user: User = Depends(authenticated_user),
+):
+    """Update Address entity with the given ID if exists."""
+
+    service = UserService(db_session)
+    user_address = service.get_user_delivery_address(user, address_id)
+
+    if user_address is None:
+        return build_http_exception_response(
+            f"Address with id '{address_id}' does not exist.",
+            code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    updated_address = service.update_user_address_data(
+        user_address, address_data.dict(exclude_unset=True)
+    )
+
+    return {"delivery_address": updated_address}
+
+
+@ME_ROUTER.get(
+    "/orders",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+    },
+)
+def get_auth_user_orders(
+    filters: OrderFilterParamsSchema = Depends(OrderFilterParamsSchema),
+    db_session: Session = Depends(get_db_session),
+    user: User = Depends(authenticated_user),
+) -> LimitOffsetPage[OrderOutSchema]:
+    service = OrderService(db_session)
+    order_filters = {**filters.dict(exclude={"sort"}), "user_id": user.id}
+    return service.read_all(filters.sort, filters=order_filters)

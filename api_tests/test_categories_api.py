@@ -10,6 +10,7 @@ from api_tests.utils import (
     assert_category_data,
     assert_api_error,
     assert_offset_limit_pagination_data,
+    assert_category_collection,
 )
 from api_tests.factories import CategoryFactory
 from src.apis.constants import DEFAULT_LIMIT, DEFAULT_OFFSET
@@ -76,10 +77,15 @@ def test_get_categories_list_returns_200_on_success(admin_user_client: TestClien
     response = admin_user_client.get(ENDPOINTS["LIST"])
     response_json = response.json()
 
-    assert response.status_code == status.HTTP_200_OK
-    assert sorted(response_json["items"], key=lambda x: x["id"]) == sorted(
-        expected_categories_data, key=lambda x: x["id"]
+    assert "items" in response_json, "Paginated collection is not embedded."
+
+    sorted_response_data = sorted(
+        response_json["items"], key=lambda x: x["category"]["id"]
     )
+    sorted_expected_data = sorted(expected_categories_data, key=lambda x: x["id"])
+
+    assert response.status_code == status.HTTP_200_OK
+    assert_category_collection(sorted_response_data, sorted_expected_data)
     assert_offset_limit_pagination_data(
         response_json,
         expected_items_len=len(expected_categories),
@@ -105,10 +111,15 @@ def test_get_categories_list_returns_200_when_pagination_parameters_provided(
     )
     response_json = response.json()
 
-    assert response.status_code == status.HTTP_200_OK
-    assert sorted(response_json["items"], key=lambda x: x["id"]) == sorted(
-        expected_categories_data, key=lambda x: x["id"]
+    assert "items" in response_json, "Paginated collection is not embedded."
+
+    sorted_response_data = sorted(
+        response_json["items"], key=lambda x: x["category"]["id"]
     )
+    sorted_expected_data = sorted(expected_categories_data, key=lambda x: x["id"])
+
+    assert response.status_code == status.HTTP_200_OK
+    assert_category_collection(sorted_response_data, sorted_expected_data)
     assert_offset_limit_pagination_data(
         response_json,
         expected_items_len=len(expected_categories_data),
@@ -136,10 +147,15 @@ def test_get_categories_list_returns_200_when_search_parameter_provided(
     )
     response_json = response.json()
 
-    assert response.status_code == status.HTTP_200_OK
-    assert sorted(response_json["items"], key=lambda x: x["id"]) == sorted(
-        expected_categories_data, key=lambda x: x["id"]
+    assert "items" in response_json, "Paginated collection is not embedded."
+
+    sorted_response_data = sorted(
+        response_json["items"], key=lambda x: x["category"]["id"]
     )
+    sorted_expected_data = sorted(expected_categories_data, key=lambda x: x["id"])
+
+    assert response.status_code == status.HTTP_200_OK
+    assert_category_collection(sorted_response_data, sorted_expected_data)
     assert_offset_limit_pagination_data(
         response_json,
         expected_items_len=len(expected_categories_data),

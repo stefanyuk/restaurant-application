@@ -14,11 +14,15 @@ from api_tests.utils import (
     assert_api_error,
     assert_basic_user_data,
     assert_extended_user_data,
+    assert_address_data,
+    assert_orders_collection,
+    assert_user_collection_data,
 )
 from api_tests.factories import (
     UserFactory,
     AddressFactory,
     ProductFactory,
+    OrderFactory,
 )
 from src.apis.services.email_service import fm
 from src.settings import settings
@@ -27,6 +31,7 @@ from src.apis.token_backend import create_jwt_token_backend
 from src.database.models.constants import MAX_FIRST_NAME_LENGTH
 from src.database.models.constants import MAX_LAST_NAME_LENGTH
 from src.apis.constants import DEFAULT_LIMIT, DEFAULT_OFFSET
+from src.database.models.order import OrderStatus
 
 
 def create_wrong_user_payload(wrong_field_name: str, wrong_field_value: str):
@@ -59,10 +64,13 @@ def test_get_users_list_returns_200_on_success(
     response = admin_user_client.get(url)
     response_json = response.json()
 
+    assert "items" in response_json, "Paginated collection is not embedded."
+
+    sorted_response_data = sorted(response_json["items"], key=lambda x: x["user"]["id"])
+    sorted_expected_data = sorted(expected_users_data, key=lambda x: x["id"])
+
     assert response.status_code == status.HTTP_200_OK
-    assert sorted(response_json["items"], key=lambda x: x["id"]) == sorted(
-        expected_users_data, key=lambda x: x["id"]
-    )
+    assert_user_collection_data(sorted_response_data, sorted_expected_data)
     assert_offset_limit_pagination_data(
         response_json,
         expected_items_len=len(expected_users),
@@ -81,6 +89,7 @@ def test_get_auth_user_info_returns_200_on_success(
     response = basic_user_client.get(url)
 
     assert response.status_code == status.HTTP_200_OK
+    assert "delivery_address" in response.json()
     assert_basic_user_data(response.json(), expected_user_data)
 
 
@@ -96,24 +105,15 @@ def test_create_auth_user_address_returns_201_on_success(basic_user_client: Test
     }
 
     response = basic_user_client.post(url, json=expected_address_data)
-    response_json = response.json()
 
     assert response.status_code == status.HTTP_201_CREATED
-    assert "address" in response_json
-
-    address_data = response_json["address"]
-
-    assert "id" in address_data
-    assert address_data["city"] == expected_address_data["city"]
-    assert address_data["street"] == expected_address_data["street"]
-    assert address_data["street_number"] == expected_address_data["street_number"]
-    assert address_data["postal_code"] == expected_address_data["postal_code"]
+    assert_address_data(response.json(), expected_address_data, check_id=False)
 
 
 def test_create_auth_user_order_returns_201_on_success(
     basic_user_client: TestClient, basic_user: User
 ):
-    product = ProductFactory.create()
+    product = ProductFactory.create(price=10)
     address = AddressFactory.create(user=basic_user)
     delivery_address = {
         "city": address.city,
@@ -125,7 +125,11 @@ def test_create_auth_user_order_returns_201_on_success(
         "comments": "some comments",
         "order_items": [{"product_id": product.id, "quantity": 10}],
     }
-    expected_order_data = {**order_data, "delivery_address": delivery_address}
+    expected_order_data = {
+        **order_data,
+        "total_price": float(product.price * order_data["order_items"][0]["quantity"]),
+    }
+
     url = app.url_path_for("create_authenticated_user_order_api")
 
     response = basic_user_client.post(
@@ -135,6 +139,7 @@ def test_create_auth_user_order_returns_201_on_success(
 
     assert response.status_code == status.HTTP_201_CREATED
     assert_order_data(response_json, expected_order_data, check_id=False)
+    assert_address_data(response_json, delivery_address, check_id=False)
 
 
 def test_create_auth_user_order_returns_400_when_product_does_not_exist(
@@ -562,3 +567,176 @@ def test_delete_user_is_idempotent(admin_user_client: TestClient):
     response = admin_user_client.delete(url)
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+def test_update_user_address_returns_200_on_successful_update(
+    basic_user_client: TestClient, basic_user: User
+):
+    address = AddressFactory.create(user=basic_user)
+    new_address_data = {"city": "New city", "street": "New street"}
+    expected_address_data = {
+        **new_address_data,
+        "postal_code": address.postal_code,
+        "street_number": address.street_number,
+    }
+    url = app.url_path_for("update_auth_user_address", address_id=address.id)
+
+    response = basic_user_client.patch(url, json=new_address_data)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert_address_data(response.json(), expected_address_data, check_id=False)
+
+
+def test_update_user_address_returns_400_when_address_does_not_exist(
+    basic_user_client: TestClient,
+):
+    address_id = 10
+    expected_error_message = f"Address with id '{address_id}' does not exist."
+    new_address_data = {"city": "New city"}
+    url = app.url_path_for("update_auth_user_address", address_id=address_id)
+
+    response = basic_user_client.patch(url, json=new_address_data)
+
+    assert_api_error(
+        response.json(), expected_error_message, status.HTTP_400_BAD_REQUEST
+    )
+
+
+def test_get_auth_user_orders_returns_200_on_success(
+    basic_user_client: TestClient, basic_user: User
+):
+    address = AddressFactory.create(user=basic_user)
+    expected_orders = [
+        OrderFactory.create(user=basic_user, delivery_address=address) for _ in range(3)
+    ]
+    expected_orders_data = []
+    expected_delivery_address = {
+        "id": address.id,
+        "city": address.city,
+        "street": address.street,
+        "street_number": address.street_number,
+        "postal_code": address.postal_code,
+    }
+
+    for order in expected_orders:
+        expected_orders_data.append(
+            {
+                "id": order.id,
+                "user_id": basic_user.id,
+                "status": OrderStatus.AWAITING.value,
+                "ordered_at": order.ordered_at,
+                "comments": order.comments,
+                "order_items": [
+                    {"product_id": item.product.id, "quantity": item.quantity}
+                    for item in order.order_items
+                ],
+                "total_price": float(
+                    sum(
+                        item.product_price * item.quantity for item in order.order_items
+                    )
+                ),
+            }
+        )
+
+    url = app.url_path_for("get_auth_user_orders")
+
+    response = basic_user_client.get(url)
+    response_json = response.json()
+
+    assert "items" in response_json, "Collection response is not embedded."
+
+    sorted_response_data = sorted(
+        response_json["items"], key=lambda x: x["order"]["id"]
+    )
+    sorted_expected_data = sorted(expected_orders_data, key=lambda x: x["id"])
+
+    assert response.status_code == status.HTTP_200_OK
+    assert_orders_collection(
+        sorted_response_data, sorted_expected_data, expected_delivery_address
+    )
+    assert_offset_limit_pagination_data(
+        response_json,
+        expected_items_len=len(expected_orders_data),
+        expected_offset=DEFAULT_OFFSET,
+        expected_limit=DEFAULT_LIMIT,
+        expected_total=len(expected_orders_data),
+    )
+
+
+@pytest.mark.parametrize(
+    "sort_field, reverse",
+    (("-total_price", 1), ("total_price", 0)),
+)
+def test_get_auth_user_orders_returns_orders_in_required_order(
+    basic_user_client: TestClient, basic_user: User, sort_field: str, reverse: int
+):
+    address = AddressFactory.create(user=basic_user)
+    expected_orders = [
+        OrderFactory.create(user=basic_user, delivery_address=address) for _ in range(3)
+    ]
+    expected_orders_data = []
+    expected_delivery_address = {
+        "id": address.id,
+        "city": address.city,
+        "street": address.street,
+        "street_number": address.street_number,
+        "postal_code": address.postal_code,
+    }
+
+    for order in expected_orders:
+        expected_orders_data.append(
+            {
+                "id": order.id,
+                "user_id": basic_user.id,
+                "status": OrderStatus.AWAITING.value,
+                "ordered_at": order.ordered_at,
+                "comments": order.comments,
+                "order_items": [
+                    {"product_id": item.product.id, "quantity": item.quantity}
+                    for item in order.order_items
+                ],
+                "total_price": float(
+                    sum(
+                        item.product_price * item.quantity for item in order.order_items
+                    )
+                ),
+            }
+        )
+
+    url = app.url_path_for("get_auth_user_orders")
+
+    response = basic_user_client.get(url, params={"sort": sort_field})
+    response_json = response.json()
+
+    assert "items" in response_json, "Collection response is not embedded."
+
+    sorted_expected_data = sorted(
+        expected_orders_data, key=lambda x: x["total_price"], reverse=reverse
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert_orders_collection(
+        response_json["items"], sorted_expected_data, expected_delivery_address
+    )
+    assert_offset_limit_pagination_data(
+        response_json,
+        expected_items_len=len(expected_orders_data),
+        expected_offset=DEFAULT_OFFSET,
+        expected_limit=DEFAULT_LIMIT,
+        expected_total=len(expected_orders_data),
+    )
+
+
+def test_get_auth_user_orders_returns_422_when_wrong_sorting_parameter_provided(
+    basic_user_client: TestClient,
+):
+    wrong_sorting_field = "-wrong_field"
+    expected_error_message = (
+        f"Value '{wrong_sorting_field}' is "
+        + "not in the list of allowed fields to sort by."
+    )
+    url = app.url_path_for("get_auth_user_orders")
+    response = basic_user_client.get(url, params={"sort": wrong_sorting_field})
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.json()["detail"][0]["msg"] == expected_error_message

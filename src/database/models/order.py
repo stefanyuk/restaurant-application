@@ -8,9 +8,9 @@ from src.database.models.types import timestamp
 
 
 class OrderStatus(Enum):
-    AWAITING = "Awaiting fulfilment"
-    DELIVERED = "Delivered"
-    IN_DELIVERY = "In Delivery"
+    AWAITING = "AWAITING"
+    DELIVERED = "DELIVERED"
+    IN_DELIVERY = "IN DELIVERY"
 
 
 class Order(Base):
@@ -25,9 +25,20 @@ class Order(Base):
     user: Mapped["User"] = relationship(back_populates="orders")
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     order_items: Mapped[list["OrderItem"]] = relationship(
-        back_populates="order", cascade="all, delete", passive_deletes=True
+        back_populates="order",
+        cascade="all, delete",
+        passive_deletes=True,
+        lazy="selectin",
     )
     address_id: Mapped[int] = mapped_column(
         ForeignKey("addresses.id", ondelete="SET NULL"), nullable=False
     )
-    delivery_address: Mapped["Address"] = relationship(back_populates="orders")
+    delivery_address: Mapped["Address"] = relationship(
+        back_populates="orders", lazy="selectin"
+    )
+
+    SORTABLE_FIELDS = {"total_price"}
+
+    @property
+    def total_price(self):
+        return sum([item.product_price * item.quantity for item in self.order_items])

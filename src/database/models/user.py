@@ -36,6 +36,7 @@ class User(Base):
     )
 
     SEARCHABLE_FIELDS = {"email", "first_name", "last_name", "phone_number"}
+    SORTABLE_FIELDS = {"first_name", "last_name", "registered_at", "last_login_date"}
 
     @property
     def password(self):

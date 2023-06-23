@@ -1,4 +1,4 @@
-from typing import Any, Generic, Type, TypeVar
+from typing import Any, Generic, Type, TypeVar, Mapping
 
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import or_, select
@@ -9,7 +9,8 @@ from src.apis.common_errors import ServiceBaseError
 from src.database.models import Base
 
 BaseModel = TypeVar("BaseModel", bound=Base)
-DataObject = dict[str, Any]
+DataObject = Mapping[str, Any]
+FilterData = Mapping[str, Any]
 
 
 class BaseService(Generic[BaseModel]):
@@ -41,39 +42,45 @@ class BaseService(Generic[BaseModel]):
         return entity
 
     def read_all(
-        self, searched_pattern: str | None, sort: str | None
+        self,
+        sort: str | None,
+        filters: FilterData,
     ) -> list[BaseModel]:
-        """
-        Retrieve a list of records from the database.
+        """Retrieve a list of records from the database.
 
         Records will be optionally filtered by a search pattern and sorted.
 
         Args:
-            searched_pattern (str | None): A string pattern to filter the records.
-                If provided, only records containing the pattern in any of the
-                searchable fields will be returned. If None, no filtering will be
-                applied.
             sort (str | None): A string indicating the sorting order. If the string
                 starts with a hyphen ("-"), the sorting will be in descending order
                 based on the specified field. If it does not start with a hyphen,
                 the sorting will be in ascending order. If None, no sorting will be
                 applied.
+            filters (FilterData | None, optional): filters to apply to result list
 
         Returns:
             list[BaseModel]: A list of BaseModel objects representing the retrieved
             records.
         """
         query = self._get_list_query()
+        query = self._prepare_read_all_query(query, sort, filters)
+        return paginate(conn=self.db_session, query=query)
 
-        if searched_pattern is not None:
-            query = self._apply_search_filter(query, searched_pattern)
+    def _prepare_read_all_query(
+        self,
+        query: Select,
+        sort: str | None,
+        filters: FilterData,
+    ) -> Select:
+        if any(filters.values()):
+            query = self._get_filtered_query(query, filters)
 
         if sort is not None:
             query = self._apply_sorting(query, sort)
 
-        return paginate(conn=self.db_session, query=query)
+        return query
 
-    def update(self, entity: Base, new_data: DataObject) -> BaseModel:
+    def update(self, entity: BaseModel, new_data: DataObject) -> BaseModel:
         """Update record in a table."""
         for field_name, value in new_data.items():
             setattr(entity, field_name, value)
@@ -91,26 +98,18 @@ class BaseService(Generic[BaseModel]):
 
         self.db_session.delete(entity)
 
-    def _apply_search_filter(self, query: Select, searched_pattern: str) -> Select:
-        """
-        Apply a search filter to the given query based on the provided pattern.
+    def _get_filtered_query(self, query: Select, filters: FilterData) -> Select:
+        filter_expressions = []
 
-        Args:
-            query (Select): The SQLAlchemy Select object representing the query to
-                be filtered.
-            searched_pattern (str): The pattern to search for in the searchable
-                fields.
-
-        Returns:
-            Select: The updated SQLAlchemy Select object with the search filter
-            applied.
-        """
-        return query.where(
-            or_(
-                getattr(self.model, field).ilike(f"%{searched_pattern}%")
-                for field in self.model.SEARCHABLE_FIELDS
+        if searched_pattern := filters.get("search", None):
+            filter_expressions.append(
+                or_(
+                    getattr(self.model, field).ilike(f"%{searched_pattern}%")
+                    for field in self.model.SEARCHABLE_FIELDS
+                )
             )
-        )
+
+        return query.where(*filter_expressions)
 
     def _apply_sorting(self, query: Select, sort: str) -> Select:
         """

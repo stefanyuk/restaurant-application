@@ -39,7 +39,6 @@ def prepare_extended_user_data(user: User, with_id: bool = True) -> dict[str, An
         dict[str, Any]: extended user information
     """
     user_data = {
-        "id": user.id,
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
@@ -83,7 +82,7 @@ def assert_order_data(
     expected_order_data: ExpectedData,
     check_id: bool = True,
 ):
-    expected_attrs = ("comments", "order_items", "delivery_address")
+    expected_attrs = ("comments", "order_items", "total_price")
 
     assert "order" in response_data, "Response data is not embedded."
 
@@ -172,12 +171,16 @@ def assert_category_data(
 ):
     expected_attrs = ("name",)
 
-    assert "id" in response_data, "Attribute 'id' was not found in response."
+    assert "category" in response_data, "Response data is not embedded."
 
-    _assert_attrs(expected_attrs, response_data, expected_category_data)
+    category_data = response_data["category"]
+
+    assert "id" in category_data, "Attribute 'id' was not found in response."
+
+    _assert_attrs(expected_attrs, category_data, expected_category_data)
 
     if check_id is True:
-        assert expected_category_data["id"] == response_data["id"]
+        assert expected_category_data["id"] == category_data["id"]
 
 
 def assert_product_data(
@@ -185,11 +188,84 @@ def assert_product_data(
     expected_product_data: ExpectedData,
     check_id: bool = True,
 ):
-    expected_attrs = ("name",)
+    expected_attrs = ("name", "summary", "price", "category_id")
 
-    assert "id" in response_data, "Attribute 'id' was not found in response."
+    assert "product" in response_data, "Response data is not embedded."
 
-    _assert_attrs(expected_attrs, response_data, expected_product_data)
+    product_data = response_data["product"]
+
+    assert "id" in product_data, "Attribute 'id' was not found in response."
+
+    _assert_attrs(expected_attrs, product_data, expected_product_data)
 
     if check_id is True:
-        assert expected_product_data["id"] == response_data["id"]
+        assert expected_product_data["id"] == product_data["id"]
+
+
+def assert_address_data(
+    response_data: ResponseData,
+    expected_address_data: ExpectedData,
+    check_id: bool = True,
+):
+    expected_attrs = ("city", "street", "street_number", "postal_code")
+
+    assert "delivery_address" in response_data, "Response data is not embedded."
+
+    address_data = response_data["delivery_address"]
+
+    assert "id" in address_data, "Attribute 'id' was not found in response."
+
+    _assert_attrs(expected_attrs, address_data, expected_address_data)
+
+    if check_id is True:
+        assert expected_address_data["id"] == address_data["id"]
+
+
+def assert_orders_collection(
+    response_data: list[ResponseData],
+    expected_orders_data: list[ExpectedData],
+    expected_address_data: ExpectedData,
+):
+    assert len(response_data) == len(
+        expected_orders_data
+    ), "Collections have different length."
+
+    for expected_data, actual_data in zip(expected_orders_data, response_data):
+        assert_order_data(actual_data, expected_data)
+        assert_address_data(actual_data, expected_address_data)
+
+
+def assert_product_collection(
+    response_data: list[ResponseData],
+    expected_products_data: list[ExpectedData],
+):
+    assert len(response_data) == len(
+        expected_products_data
+    ), "Collections have different length."
+
+    for expected_data, actual_data in zip(expected_products_data, response_data):
+        assert_product_data(actual_data, expected_data)
+
+
+def assert_category_collection(
+    response_data: list[ResponseData],
+    expected_categories_data: list[ExpectedData],
+):
+    assert len(response_data) == len(
+        expected_categories_data
+    ), "Collections have different length."
+
+    for expected_data, actual_data in zip(expected_categories_data, response_data):
+        assert_category_data(actual_data, expected_data)
+
+
+def assert_user_collection_data(
+    response_data: list[ResponseData],
+    expected_users_data: list[ExpectedData],
+):
+    assert len(response_data) == len(
+        expected_users_data
+    ), "Collections have different length."
+
+    for expected_data, actual_data in zip(expected_users_data, response_data):
+        assert_extended_user_data(actual_data, expected_data)
